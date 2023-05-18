@@ -7,6 +7,7 @@
                #:fiasco
                #:uiop
                #:closer-mop
+               #:trivial-garbage
               )
   :perform (asdf:test-op (o s)
                          (uiop:symbol-call ':anatevka-tests

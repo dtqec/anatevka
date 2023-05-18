@@ -201,7 +201,7 @@ NOTE: This macro automatically rescales the pairs in `COORDINATES' to reside at 
                    (with-simulation (simulation (*local-courier* dryad))
                      (anatevka::reset-logger)
                      (when (= 0 (mod i 50))
-                       (sb-ext:gc :full t))
+                       (trivial-garbage:gc :full t))
                      (sow-spacelike-graph dryad ',coordinates
                                           :offset ,border)
                      (multiple-value-bind (matching time)

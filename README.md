@@ -39,11 +39,13 @@ In our example, we will use the stock `dryad` and `blossom-node` implementations
 The following definition provides eight valid `demo-id` instances and a function which computes the edge weights between them:
 
 ```lisp
+(in-package #:anatevka)
+
 (defstruct demo-id
   "A wrapper for a vertex ID used in the Mathematica blossom demo."
   (value nil :type (integer 1 8)))
 
-(defmethod anatevka::vertex-vertex-distance ((id-v demo-id) (id-w demo-id))
+(defmethod vertex-vertex-distance ((id-v demo-id) (id-w demo-id))
   (let ((v (demo-id-value id-v))
         (w (demo-id-value id-w)))
     ;; index into the following weighted adjacency matrix

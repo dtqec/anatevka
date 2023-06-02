@@ -83,7 +83,7 @@ Having established the class which carries the graph definition, we wrap a solve
   (loop :for j :from 1 :to 8
         :for id := (make-demo-id :value j)
         :do (send-message (process-public-address dryad)
-                          (anatevka::make-message-sow :id id)))
+                          (make-message-sow :id id)))
   ;; Run simulation until maximally matched (i.e., until the dryad terminates).
   (simulation-run simulation :canary (canary-process dryad))
   ;; Read out the match edges from the `match-address' mailbox.
@@ -100,7 +100,7 @@ Having established the class which carries the graph definition, we wrap a solve
                       (demo-id-value left)
                       (vertex-vertex-distance left right)
                       (demo-id-value right))
-          :sum (anatevka::vertex-vertex-distance left right))))
+          :sum (vertex-vertex-distance left right))))
 ```
 
 which prints

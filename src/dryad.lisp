@@ -157,12 +157,16 @@ NOTE: In the basic implementation, these messages must be waiting for the DRYAD 
     ;; and directly expand it if appropriate.
     (sync-rpc (make-message-blossom-parent)
         (topmost sprout)
-      (sync-rpc (make-message-values :values '(children parent))
-          ((children parent) topmost)
+      (sync-rpc (make-message-values :values '(children parent match-edge))
+          ((children parent match-edge) topmost)
         (when (or children parent)
           (log-entry :entry-type 'aborting-dryad-expansion
                      :reason 'tree-structure))
         (unless (or children parent)
+          (log-entry :entry-type 'dryad-sending-expand
+               :sprout sprout
+               :topmost topmost
+               :match-edge match-edge)
           (sync-rpc (make-message-expand)
               (expand-reply topmost)
             nil))))))

@@ -103,6 +103,8 @@ PETAL-CHILD-EDGES: The list of child edges attached to the blossoms in the subtr
                                          :paused? t
                                          :debug? (process-debug? supervisor))))
       (schedule fresh-blossom now)
+      (log-entry :entry-type 'spawned-fresh-blossom
+                 :fresh-blossom fresh-blossom)
       (push (make-data-frame-contract
              :fresh-blossom (process-public-address fresh-blossom)
              :pong (data-frame-supervisor-pong supervisor-frame))

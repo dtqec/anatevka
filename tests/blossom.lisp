@@ -99,8 +99,12 @@
   (assert (evenp y))
   (list (- (/ (1- x) 2) offset) (/ y 2)))
 
-(defun normalize-match (id-a id-b &key offset)
-  "Given a pair of matched IDs (`ID-A' and `ID-B') extracted from a REAP message, un-shift the coordinates from the surface code coordinate system, un-apply the `OFFSET', and return the sorted match."
+(defgeneric normalize-match (id-a id-b &key offset)
+  (:documentation "Given a pair of matched IDs (`ID-A' and `ID-B') extracted from a REAP message, un-shift the coordinates from the surface code coordinate system, un-apply the `OFFSET', and return the sorted match."))
+
+(defmethod normalize-match ((id-a anatevka-tests::grid-location)
+                            (id-b anatevka-tests::grid-location)
+                            &key offset)
   (let* ((a-x (grid-location-x id-a))
          (a-y (grid-location-y id-a))
          (b-x (grid-location-x id-b))

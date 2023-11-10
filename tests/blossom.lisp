@@ -55,9 +55,10 @@
   "Given INTEGER coordinates `X' and `Y', apply an INTEGER `OFFSET' to `X', and then shift them to the 'surface code coordinate system' of the surface code. In the surface code, each flavor of stabilizer occupies its own lattice (thus we will only care about one of the two for the blossom algorithm). One such lattice has 'origin' at (1, 0), and every other stabilizer is 2 units away in the x or y direction."
   (list (1+ (* 2 (+ x offset))) (* 2 y)))
 
-(defun sow-spacelike-graph (dryad coordinates
-                            &key offset)
-  "Given a LIST of spacelike `COORDINATES', sow them into the `DRYAD'. Before sowing, apply the INTEGER `OFFSET' and shift the coordinates to the surface code coordinate system using `SHIFT-COORDINATES'."
+(defgeneric sow-spacelike-graph (dryad coordinates &key offset)
+  (:documentation "Given a LIST of spacelike `COORDINATES', sow them into the `DRYAD'. Before sowing, apply the INTEGER `OFFSET' and shift the coordinates to the surface code coordinate system using `SHIFT-COORDINATES'."))
+
+(defmethod sow-spacelike-graph ((dryad dryad) coordinates &key offset)
   (loop :for (x y) :in coordinates
         ;; apply offset and shift to 'lattice coordinate system'
         :for (shifted-x shifted-y) := (shift-coordinates x y offset)

@@ -388,4 +388,6 @@ In the right diagram, b0 is both the `root-node' and the `matched-node', because
   ;; NOTE: There's no data frame to pop.
   (when reply-channel
     (send-message reply-channel (make-message-rpc-done)))
+  (log-entry :entry-type 'blossom-extinguished
+             :blossom node)
   (setf (blossom-node-wilting node) t))

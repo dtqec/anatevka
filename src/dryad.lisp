@@ -140,11 +140,15 @@ NOTE: In the basic implementation, these messages must be waiting for the DRYAD 
                  (push ids pairs))
                 (t
                  (error "Two distinct match edges laid claim to the same vertex.")))))
-          (assert (= (length pairs) (/ (length addresses) 2)))
-          (dolist (pair pairs)
-            (send-message (dryad-match-address dryad)
-                          (make-message-reap :ids pair)))
-          (process-continuation dryad `(WIND-DOWN)))))))
+          (process-continuation dryad
+                                `(PROCESS-PAIRS ,pairs)
+                                `(WIND-DOWN)))))))
+
+(define-process-upkeep ((dryad dryad) now) (PROCESS-PAIRS pairs)
+  "Iterates through `PAIRS' and sends corresponding REAP messages."
+  (dolist (pair pairs)
+    (send-message (dryad-match-address dryad)
+                  (make-message-reap :ids pair))))
 
 (define-process-upkeep ((dryad dryad) now) (SEND-EXPAND sprout)
   "Directs SPROUT to perform blossom expansion."

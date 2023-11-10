@@ -55,9 +55,10 @@
   "Given INTEGER coordinates `X' and `Y', apply an INTEGER `OFFSET' to `X', and then shift them to the 'surface code coordinate system' of the surface code. In the surface code, each flavor of stabilizer occupies its own lattice (thus we will only care about one of the two for the blossom algorithm). One such lattice has 'origin' at (1, 0), and every other stabilizer is 2 units away in the x or y direction."
   (list (1+ (* 2 (+ x offset))) (* 2 y)))
 
-(defun sow-spacelike-graph (dryad coordinates
-                            &key offset)
-  "Given a LIST of spacelike `COORDINATES', sow them into the `DRYAD'. Before sowing, apply the INTEGER `OFFSET' and shift the coordinates to the surface code coordinate system using `SHIFT-COORDINATES'."
+(defgeneric sow-spacelike-graph (dryad coordinates &key offset)
+  (:documentation "Given a LIST of spacelike `COORDINATES', sow them into the `DRYAD'. Before sowing, apply the INTEGER `OFFSET' and shift the coordinates to the surface code coordinate system using `SHIFT-COORDINATES'."))
+
+(defmethod sow-spacelike-graph ((dryad dryad) coordinates &key offset)
   (loop :for (x y) :in coordinates
         ;; apply offset and shift to 'lattice coordinate system'
         :for (shifted-x shifted-y) := (shift-coordinates x y offset)
@@ -98,18 +99,19 @@
   (assert (evenp y))
   (list (- (/ (1- x) 2) offset) (/ y 2)))
 
-(defun unpack-match (reap-message offset)
-  "Given a message `REAP-MESSAGE' of type message-reap, unpack the match it contains as a LIST, unshifting the coordinates from the surface code coordinate system, and unapplying the `OFFSET'."
-  (destructuring-bind (id-a id-b) (anatevka::message-reap-ids reap-message)
-    (let* ((location-a id-a)
-           (location-b id-b)
-           (a-x (grid-location-x location-a))
-           (a-y (grid-location-y location-a))
-           (b-x (grid-location-x location-b))
-           (b-y (grid-location-y location-b))
-           (match (list (unshift-coordinates a-x a-y offset)
-                        (unshift-coordinates b-x b-y offset))))
-      (sort-match match))))
+(defgeneric normalize-match (id-a id-b &key offset)
+  (:documentation "Given a pair of matched IDs (`ID-A' and `ID-B') extracted from a REAP message, un-shift the coordinates from the surface code coordinate system, un-apply the `OFFSET', and return the sorted match."))
+
+(defmethod normalize-match ((id-a anatevka-tests::grid-location)
+                            (id-b anatevka-tests::grid-location)
+                            &key offset)
+  (let* ((a-x (grid-location-x id-a))
+         (a-y (grid-location-y id-a))
+         (b-x (grid-location-x id-b))
+         (b-y (grid-location-y id-b))
+         (match (list (unshift-coordinates a-x a-y offset)
+                      (unshift-coordinates b-x b-y offset))))
+    (sort-match match)))
 
 (defun contains-coordinate? (matching coordinate)
   "Returns T if the `MATCHING', which is a LIST in the form ((X0 Y0) (X1 Y1)) where X0, Y0, X1, Y1 are all INTEGERs, contains the `COORDINATE', which is a LIST of INTEGERs in the form (X0 Y0)."
@@ -138,7 +140,8 @@
               (simulation-run simulation :canary (canary-until time))
               (receive-message (match-address reap-message)
                 (message-reap
-                 (push (unpack-match reap-message offset) matching))))))
+                 (destructuring-bind (id-a id-b) (anatevka::message-reap-ids reap-message)
+                   (push (normalize-match id-a id-b :offset offset) matching)))))))
 
 (defun match< (a b)
   "Determines if match `A' should go before match `B', where both are LISTs in the form ((X0 Y0) (X1 Y1)) where X0, Y0, X1, and Y1 are all INTEGERs. First compares by closeness to origin, and then by X0."
@@ -172,10 +175,11 @@
                                      (dryad-clock-rate +default-dryad-clock-rate+)
                                      (iterations +default-iterations+)
                                      (timeout +default-timeout+)
-                                     (timestep +default-timestep+)) &body body)
+                                     (timestep +default-timestep+)
+                                     (dryad-class 'dryad)) &body body)
   "Used to define a blossom algorithm unit test named `TEST-NAME'. The LIST of `COORDINATES' represents the problem graph to be fed to the blossom algorithm.
 
-There are also a collection of optional keyword arguments that allow individual tests to be customized. The `DEBUG?' and `DRYAD-CLOCK-RATE' parameters set the process debug flag and the process clock rate, respectively, of the DRYAD in the algorithm. The `ITERATIONS' parameter determines how many times the test will be run. The `BORDER' parameter offsets the coordinates. The `TIMEOUT' parameter determines how long the test can run before it is considered a failure. The `TIMESTEP' parameter designates how many clock cycles to run between each RECEIVE-MESSAGE call.
+There are also a collection of optional keyword arguments that allow individual tests to be customized. The `DEBUG?' and `DRYAD-CLOCK-RATE' parameters set the process debug flag and the process clock rate, respectively, of the DRYAD in the algorithm. The `ITERATIONS' parameter determines how many times the test will be run. The `BORDER' parameter offsets the coordinates. The `TIMEOUT' parameter determines how long the test can run before it is considered a failure. The `TIMESTEP' parameter designates how many clock cycles to run between each RECEIVE-MESSAGE call. The `DRYAD-CLASS' parameter allows this test suite to be used with different types of dryads.
 
 Finally, the `BODY' contains optional declarations and a docstring, and then is followed by a series of LISTs, each of which represents a valid solution (i.e. minimum-weight perfect matching) for the problem graph. The `BODY' needs to contain at least one valid solution so that it can determine the correct minimum weight to check as part of the test. Test-writers can optionally provide additional solutions, but they currently do not play a part in the success or failure of a test.
 
@@ -194,7 +198,7 @@ NOTE: This macro automatically rescales the pairs in `COORDINATES' to reside at 
            :with times
            :do (with-courier ()
                  (let* ((channel (register))
-                        (dryad (spawn-process 'dryad
+                        (dryad (spawn-process ',dryad-class
                                               :process-clock-rate ,dryad-clock-rate
                                               :match-address channel
                                               :debug? ,debug?)))

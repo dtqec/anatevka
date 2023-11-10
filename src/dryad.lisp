@@ -35,7 +35,12 @@
     :accessor dryad-sprouted?
     :initform (make-hash-table :hash-function #'hash-address :test #'address=)
     :type hash-table
-    :documentation "A map ADDRESS -> BOOLEAN which records whether a `BLOSSOM-NODE' has begun participating in matches."))
+    :documentation "A map ADDRESS -> BOOLEAN which records whether a `BLOSSOM-NODE' has begun participating in matches.")
+   (node-type
+    :accessor dryad-node-class
+    :initform 'blossom-node
+    :type symbol
+    :documentation "The class identifier for nodes that this `DRYAD' works with. Can be a `BLOSSOM-NODE' or any subclass of `BLOSSOM-NODE'."))
   (:documentation "PROCESS responsible for the injection and ejection of nodes from the blossom algorithm."))
 
 ;;;
@@ -48,7 +53,7 @@
 
 NOTE: In the basic implementation, these messages must be waiting for the DRYAD on launch."
   (let* ((node-id (message-sow-id message))
-         (node-process (spawn-process 'blossom-node
+         (node-process (spawn-process (dryad-node-class dryad)
                                       :dryad (process-public-address dryad)
                                       :id node-id))
          (node-address (process-public-address node-process)))

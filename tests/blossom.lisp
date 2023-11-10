@@ -99,18 +99,15 @@
   (assert (evenp y))
   (list (- (/ (1- x) 2) offset) (/ y 2)))
 
-(defun unpack-match (reap-message offset)
-  "Given a message `REAP-MESSAGE' of type message-reap, unpack the match it contains as a LIST, unshifting the coordinates from the surface code coordinate system, and unapplying the `OFFSET'."
-  (destructuring-bind (id-a id-b) (anatevka::message-reap-ids reap-message)
-    (let* ((location-a id-a)
-           (location-b id-b)
-           (a-x (grid-location-x location-a))
-           (a-y (grid-location-y location-a))
-           (b-x (grid-location-x location-b))
-           (b-y (grid-location-y location-b))
-           (match (list (unshift-coordinates a-x a-y offset)
-                        (unshift-coordinates b-x b-y offset))))
-      (sort-match match))))
+(defun normalize-match (id-a id-b &key offset)
+  "Given a pair of matched IDs (`ID-A' and `ID-B') extracted from a REAP message, un-shift the coordinates from the surface code coordinate system, un-apply the `OFFSET', and return the sorted match."
+  (let* ((a-x (grid-location-x id-a))
+         (a-y (grid-location-y id-a))
+         (b-x (grid-location-x id-b))
+         (b-y (grid-location-y id-b))
+         (match (list (unshift-coordinates a-x a-y offset)
+                      (unshift-coordinates b-x b-y offset))))
+    (sort-match match)))
 
 (defun contains-coordinate? (matching coordinate)
   "Returns T if the `MATCHING', which is a LIST in the form ((X0 Y0) (X1 Y1)) where X0, Y0, X1, Y1 are all INTEGERs, contains the `COORDINATE', which is a LIST of INTEGERs in the form (X0 Y0)."
@@ -139,7 +136,8 @@
               (simulation-run simulation :canary (canary-until time))
               (receive-message (match-address reap-message)
                 (message-reap
-                 (push (unpack-match reap-message offset) matching))))))
+                 (destructuring-bind (id-a id-b) (anatevka::message-reap-ids reap-message)
+                   (push (normalize-match id-a id-b :offset offset) matching)))))))
 
 (defun match< (a b)
   "Determines if match `A' should go before match `B', where both are LISTs in the form ((X0 Y0) (X1 Y1)) where X0, Y0, X1, and Y1 are all INTEGERs. First compares by closeness to origin, and then by X0."

@@ -36,7 +36,7 @@
     :initform (make-hash-table :hash-function #'hash-address :test #'address=)
     :type hash-table
     :documentation "A map ADDRESS -> BOOLEAN which records whether a `BLOSSOM-NODE' has begun participating in matches.")
-   (node-type
+   (node-class
     :accessor dryad-node-class
     :initform 'blossom-node
     :type symbol

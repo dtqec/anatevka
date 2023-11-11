@@ -25,6 +25,12 @@
     :initarg :match-address
     :type address
     :documentation "The `ADDRESS' to which the `DRYAD' will send REAP messages.")
+   (node-class
+    :accessor dryad-node-class
+    :initarg :node-class
+    :initform 'blossom-node
+    :type symbol
+    :documentation "The class identifier for nodes that this `DRYAD' works with. Can be a `BLOSSOM-NODE' or any subclass of `BLOSSOM-NODE'.")
    ;; local state
    (ids
     :accessor dryad-ids
@@ -48,7 +54,7 @@
 
 NOTE: In the basic implementation, these messages must be waiting for the DRYAD on launch."
   (let* ((node-id (message-sow-id message))
-         (node-process (spawn-process 'blossom-node
+         (node-process (spawn-process (dryad-node-class dryad)
                                       :dryad (process-public-address dryad)
                                       :id node-id))
          (node-address (process-public-address node-process)))

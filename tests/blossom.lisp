@@ -58,7 +58,8 @@
 (defgeneric sow-spacelike-graph (dryad coordinates &key offset)
   (:documentation "Given a LIST of spacelike `COORDINATES', sow them into the `DRYAD'. Before sowing, apply the INTEGER `OFFSET' and shift the coordinates to the surface code coordinate system using `SHIFT-COORDINATES'."))
 
-(defmethod sow-spacelike-graph ((dryad dryad) coordinates &key offset)
+(defmethod sow-spacelike-graph ((dryad dryad) coordinates
+                                &key (offset (error "Must provide offset.")))
   (loop :for (x y) :in coordinates
         ;; apply offset and shift to 'lattice coordinate system'
         :for (shifted-x shifted-y) := (shift-coordinates x y offset)
@@ -104,7 +105,7 @@
 
 (defmethod normalize-match ((id-a anatevka-tests::grid-location)
                             (id-b anatevka-tests::grid-location)
-                            &key offset)
+                            &key (offset (error "Must provide offset.")))
   (let* ((a-x (grid-location-x id-a))
          (a-y (grid-location-y id-a))
          (b-x (grid-location-x id-b))
@@ -126,8 +127,12 @@
          (loop :for coordinate :in coordinates
                :collect (contains-coordinate? matching coordinate))))
 
-(defun await-matching (simulation match-address
-                       &key coordinates offset timeout timestep)
+(defun await-matching (simulation
+                       match-address
+                       &key (coordinates (error "Must provide coordinates."))
+                            (offset (error "Must provide offset."))
+                            (timeout (error "Must provide timeout"))
+                            (timestep (error "Must provide timestep.")))
   "Run the `SIMULATION' and listen on the `MATCH-ADDRESS' for a series of reap messages that contain the matching produced by the blossom algorithm. The simulation runs, checking the channel every `TIMESTEP' steps, until it received a perfect matching (determined using the LIST of `COORDINATES'), or until hitting the `TIMEOUT' (an INTEGER). Each message is unpacked (using the `OFFSET') into a LIST of LISTs, and pushed onto the MATCHING (also a LIST), which is returned at the end, along with the time it took to complete."
   (initialize-and-return ((final-time) (matching))
     (loop :with time := 0

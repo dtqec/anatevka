@@ -25,6 +25,12 @@
     :initarg :match-address
     :type address
     :documentation "The `ADDRESS' to which the `DRYAD' will send REAP messages.")
+   (node-class
+    :accessor dryad-node-class
+    :initarg :node-class
+    :initform 'blossom-node
+    :type symbol
+    :documentation "The class identifier for nodes that this `DRYAD' works with. Can be a `BLOSSOM-NODE' or any subclass of `BLOSSOM-NODE'.")
    ;; local state
    (ids
     :accessor dryad-ids
@@ -35,12 +41,7 @@
     :accessor dryad-sprouted?
     :initform (make-hash-table :hash-function #'hash-address :test #'address=)
     :type hash-table
-    :documentation "A map ADDRESS -> BOOLEAN which records whether a `BLOSSOM-NODE' has begun participating in matches.")
-   (node-class
-    :accessor dryad-node-class
-    :initform 'blossom-node
-    :type symbol
-    :documentation "The class identifier for nodes that this `DRYAD' works with. Can be a `BLOSSOM-NODE' or any subclass of `BLOSSOM-NODE'."))
+    :documentation "A map ADDRESS -> BOOLEAN which records whether a `BLOSSOM-NODE' has begun participating in matches."))
   (:documentation "PROCESS responsible for the injection and ejection of nodes from the blossom algorithm."))
 
 ;;;

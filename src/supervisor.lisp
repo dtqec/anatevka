@@ -32,9 +32,8 @@
     :type symbol)
    (node-dryad
     :accessor supervisor-node-dryad
-    :initform nil
     :initarg :node-dryad
-    :type (or null address)
+    :type address
     :documentation "The address of the host `DRYAD' for the node that spawned us."))
   (:documentation "A companion process responsible for coordinating a tree operation."))
 

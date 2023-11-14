@@ -99,6 +99,7 @@ PETAL-CHILD-EDGES: The list of child edges attached to the blossoms in the subtr
     (let* ((supervisor-frame (peek (process-data-stack supervisor)))
            (fresh-blossom (spawn-process (supervisor-node-class supervisor)
                                          :id (gensym "BLOSSOM")
+                                         :dryad (supervisor-node-dryad supervisor)
                                          ;; prevent SCANs
                                          :paused? t
                                          :debug? (process-debug? supervisor))))

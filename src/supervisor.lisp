@@ -29,7 +29,13 @@
     :accessor supervisor-node-class
     :initform 'blossom-node
     :initarg :node-class
-    :type symbol))
+    :type symbol)
+   (node-dryad
+    :accessor supervisor-node-dryad
+    :initform nil
+    :initarg :node-dryad
+    :type (or null address)
+    :documentation "The address of the host `DRYAD' for the node that spawned us."))
   (:documentation "A companion process responsible for coordinating a tree operation."))
 
 (define-message-dispatch supervisor

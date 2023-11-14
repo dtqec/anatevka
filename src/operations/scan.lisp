@@ -406,6 +406,7 @@ NOTE: this command is only installed when NODE is a vertex."
                  `(SCAN-LOOP nil)))
          (let ((supervisor (make-supervisor node
                                             :node-class (type-of node)
+                                            :node-dryad (blossom-node-dryad node)
                                             :debug? (process-debug? node))))
            (log-entry :entry-type 'spawn-supervisor
                       :pong pong

@@ -60,6 +60,7 @@
     (setf root-bucket (remove-duplicates root-bucket :test #'address=))
     (process-continuation supervisor
                           `(CONVERGECAST-COLLECT-ROOTS ,source-root ,root-bucket)
+                          `(FINISH-MULTIREWEIGHT)
                           `(HALT))))
 
 (define-process-upkeep ((supervisor supervisor) now)
@@ -89,8 +90,7 @@
           ;; otherwise, push the next set of commands onto the stack
           (process-continuation supervisor
                                 `(CHECK-PRIORITY ,source-root ,hold-cluster)
-                                `(START-INNER-MULTIREWEIGHT)
-                                `(FINISH-MULTIREWEIGHT)))))))
+                                `(START-INNER-MULTIREWEIGHT)))))))
 
 (define-process-upkeep ((supervisor supervisor) now)
     (CHECK-PRIORITY source-root target-roots)

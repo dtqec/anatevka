@@ -58,8 +58,9 @@
         (process-data-stack supervisor))
   (with-slots (root-bucket source-root) pong
     (setf root-bucket (remove-duplicates root-bucket :test #'address=))
-    (process-continuation supervisor `(CONVERGECAST-COLLECT-ROOTS ,source-root
-                                                                  ,root-bucket))))
+    (process-continuation supervisor
+                          `(CONVERGECAST-COLLECT-ROOTS ,source-root ,root-bucket)
+                          `(HALT))))
 
 (define-process-upkeep ((supervisor supervisor) now)
     (CONVERGECAST-COLLECT-ROOTS source-root root-bucket)
@@ -89,8 +90,7 @@
           (process-continuation supervisor
                                 `(CHECK-PRIORITY ,source-root ,hold-cluster)
                                 `(START-INNER-MULTIREWEIGHT)
-                                `(FINISH-MULTIREWEIGHT)
-                                `(HALT)))))))
+                                `(FINISH-MULTIREWEIGHT)))))))
 
 (define-process-upkeep ((supervisor supervisor) now)
     (CHECK-PRIORITY source-root target-roots)

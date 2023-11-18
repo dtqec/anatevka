@@ -56,7 +56,8 @@ NOTE: In the basic implementation, these messages must be waiting for the DRYAD 
   (let* ((node-id (message-sow-id message))
          (node-process (spawn-process (dryad-node-class dryad)
                                       :dryad (process-public-address dryad)
-                                      :id node-id))
+                                      :id node-id
+                                      :debug? (process-debug? dryad)))
          (node-address (process-public-address node-process)))
     (schedule node-process now)
     (setf (gethash node-address (dryad-ids       dryad)) node-id

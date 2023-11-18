@@ -63,7 +63,7 @@
 
 (define-process-upkeep ((supervisor supervisor) now)
     (CONVERGECAST-COLLECT-ROOTS source-root root-bucket)
-  "Recursively collects the `HELD-BY-ROOTS' values of `ROOT-BUCKET' to determine the set of roots that are participating in this `HOLD' cluster (meaning that they are mutually held by each other), starting with a base `CLUSTER' of just the `SOURCE-ROOT'. If any replies are NIL, we abort."
+  "Recursively collects the `HELD-BY-ROOTS' values of `ROOT-BUCKET' to determine the set of roots that are participating in this `HOLD' cluster (meaning that they are mutually held by each other), starting with a base `cluster' of just the `SOURCE-ROOT'. If any replies are NIL, we abort."
   (let ((cluster (list source-root)))
     (with-slots (hold-cluster) (peek (process-data-stack supervisor))
       (flet ((payload-constructor ()
@@ -87,20 +87,20 @@
             (finish-with-futures))
           ;; otherwise, push the next set of commands onto the stack
           (process-continuation supervisor
-                                `(CHECK-PRIORITY ,source-root)  ; TODO: add 2nd arg
+                                `(CHECK-PRIORITY ,source-root ,hold-cluster)
                                 `(START-INNER-MULTIREWEIGHT)
                                 `(FINISH-MULTIREWEIGHT)
                                 `(HALT)))))))
 
-(define-process-upkeep ((supervisor supervisor) now) (CHECK-PRIORITY original-root)
-  "Confirm that, of the roots in the hold cluster, we have priority to act.  Namely, we have priority when our `ORIGINAL-ROOT' carries the minimum ID of all the roots in the cluster."
-  (with-slots (hold-cluster) (peek (process-data-stack supervisor))
-    (sync-rpc (make-message-id-query)
-        (original-id original-root)
+(define-process-upkeep ((supervisor supervisor) now)
+    (CHECK-PRIORITY source-root target-roots)
+  "Confirm that, of the roots in the hold cluster, we have priority to act. Namely, we have priority when our `SOURCE-ROOT' carries the minimum ID (i.e. coordinate) of all the roots in the `hold-cluster' (passed as `TARGET-ROOTS')."
+  (let ((hold-cluster target-roots))
+    (sync-rpc (make-message-id-query) (source-id source-root)
       (with-replies (replies)
                     (send-message-batch #'make-message-id-query hold-cluster)
         (let ((cluster-id (reduce #'min-id replies)))
-          (unless (equalp original-id (min-id original-id cluster-id))
+          (unless (equalp source-id (min-id source-id cluster-id))
             (setf (process-lockable-aborting? supervisor) t)))))))
 
 (define-process-upkeep ((supervisor supervisor) now) (START-INNER-MULTIREWEIGHT)

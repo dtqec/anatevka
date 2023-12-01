@@ -36,7 +36,7 @@
                  (finished-tree (list* finished-blossom original-tree)))
             (blossom-let (target-tree :dryad dryad-address)
                 ((BLOSSOM :id (slot-value finished-blossom 'anatevka::id)
-                          :dryad nil
+                          :dryad dryad-address
                           :petals (list (vv-edge A C)
                                         (vv-edge C B)
                                         (vv-edge B A)))
@@ -80,7 +80,7 @@
                  (finished-tree (list* finished-blossom original-tree)))
             (blossom-let (target-tree :dryad dryad-address)
                 ((BLOSSOM :id (slot-value finished-blossom 'anatevka::id)
-                          :dryad nil
+                          :dryad dryad-address
                           :petals (list (vv-edge C E)
                                         (vv-edge E D)
                                         (vv-edge D C))
@@ -132,7 +132,7 @@
                  (finished-tree (list* finished-blossom original-tree)))
             (blossom-let (target-tree :dryad dryad-address)
                 ((BLOSSOM :id (slot-value finished-blossom 'anatevka::id)
-                          :dryad nil
+                          :dryad dryad-address
                           :petals (list (vv-edge A C)
                                         (vv-edge C B)
                                         (vv-edge B A))
@@ -189,7 +189,7 @@
                  (finished-tree (list* finished-blossom original-tree)))
             (blossom-let (target-tree :dryad dryad-address)
                 ((BLOSSOM :id (slot-value finished-blossom 'anatevka::id)
-                          :dryad nil
+                          :dryad dryad-address
                           :petals (list (vv-edge A B)
                                         (vv-edge B C)
                                         (vv-edge C E)
@@ -249,7 +249,7 @@
                  (finished-tree (list* finished-blossom original-tree)))
             (blossom-let (target-tree :dryad dryad-address)
                 ((BLOSSOM :id (slot-value finished-blossom 'anatevka::id)
-                          :dryad nil
+                          :dryad dryad-address
                           :parent (bb-edge BLOSSOM C B B)
                           :match-edge (bb-edge BLOSSOM C B B)
                           :petals (list (vv-edge C D)
@@ -315,7 +315,7 @@
                  (finished-tree (list* finished-blossom original-tree)))
             (blossom-let (target-tree :dryad dryad-address)
                 ((BLOSSOM :id (slot-value finished-blossom 'anatevka::id)
-                          :dryad nil
+                          :dryad dryad-address
                           :children (list (bb-edge BLOSSOM E F F))
                           :petals (list (vv-edge A B)
                                         (vv-edge B C)

@@ -99,7 +99,6 @@ PETAL-CHILD-EDGES: The list of child edges attached to the blossoms in the subtr
     (let* ((supervisor-frame (peek (process-data-stack supervisor)))
            (fresh-blossom (spawn-process (supervisor-node-class supervisor)
                                          :id (gensym "BLOSSOM")
-                                         :dryad (supervisor-node-dryad supervisor)
                                          ;; prevent SCANs
                                          :paused? t
                                          :debug? (process-debug? supervisor))))
@@ -263,12 +262,20 @@ If we have a non-null peduncle edge (F -> C above), then we need to tell its sou
   "Tell the blossom itself what's up."
   (let ((frame (peek (process-data-stack supervisor))))
     (with-slots (fresh-blossom peduncle-edge path petal-child-edges) frame
-      (sync-rpc (make-message-set-up-blossom
-                 :peduncle-edge peduncle-edge
-                 :petals path
-                 :petal-children petal-child-edges)
-          (set-up-result fresh-blossom)
-        nil))))
+      ;; see `COMPUTE-BLOSSOM-PATHS' above to understand why the source node of
+      ;; the first edge in the `path' corresponds to the node closest to the root
+      (let ((rootmost-cycle-node (blossom-edge-source-node (first path))))
+        ;; determine the `DRYAD' of that "rootmost" node in the cycle
+        (sync-rpc (make-message-values :values '(dryad))
+            ((dryad-address) rootmost-cycle-node)
+          (setf (supervisor-node-dryad supervisor) dryad-address)
+          (sync-rpc (make-message-set-up-blossom
+                     :peduncle-edge peduncle-edge
+                     :petals path
+                     :petal-children petal-child-edges
+                     :dryad dryad-address)
+              (set-up-result fresh-blossom)
+            (values)))))))
 
 ;;;
 ;;; message definitions
@@ -295,7 +302,8 @@ If we have a non-null peduncle edge (F -> C above), then we need to tell its sou
   "Sent from a SUPERVISOR to a newly formed contracting BLOSSOM to set up its slots."
   (peduncle-edge  nil :type (or null blossom-edge))
   (petals         nil :type list)
-  (petal-children nil :type list))
+  (petal-children nil :type list)
+  (dryad          nil :type address))
 
 ;;;
 ;;; message handlers
@@ -362,7 +370,7 @@ If we have a non-null peduncle edge (F -> C above), then we need to tell its sou
 (define-rpc-handler handle-message-set-up-blossom
     ((node blossom-node) (message message-set-up-blossom) now)
   "Sets up a new contracting blossom's slots."
-  (with-slots (peduncle-edge petals petal-children reply-channel) message
+  (with-slots (peduncle-edge petals petal-children dryad reply-channel) message
     (loop :for petal-child :in petal-children
           :for fresh-edge := (copy-blossom-edge petal-child)
           :do (setf (blossom-edge-source-node fresh-edge)
@@ -383,6 +391,8 @@ If we have a non-null peduncle edge (F -> C above), then we need to tell its sou
               (copy-blossom-edge match-and-parent-edge))))
     (setf (blossom-node-petals node)        petals
           (blossom-node-children node)      petal-children
+          ;; assign this macrovertex a dryad
+          (blossom-node-dryad node)         dryad
           ;; lastly, unpause our new blossom so that it can SCAN
           (blossom-node-paused? node)        nil)
     (log-entry :entry-type 'SET-UP-BLOSSOM
@@ -391,5 +401,6 @@ If we have a non-null peduncle edge (F -> C above), then we need to tell its sou
                :children (blossom-node-children node)
                :parent (blossom-node-parent node)
                :petals (blossom-node-petals node)
-               :pistil (blossom-node-pistil node))
+               :pistil (blossom-node-pistil node)
+               :dryad (blossom-node-dryad node))
     nil))

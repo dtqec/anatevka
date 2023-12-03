@@ -52,6 +52,7 @@
    (pingable
     :accessor blossom-node-pingable
     :initform ':ALL
+    :initarg :pingable
     :type ping-type
     :documentation "Used by message handler guards to determine whether this process is currently servicing PING requests. SOFT-PINGs are serviced when set to :SOFT or :ALL, PINGs are serviced when set to :ALL, nothing is serviced when set to :NONE.")
    (wilting

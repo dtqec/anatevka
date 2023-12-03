@@ -261,7 +261,16 @@ Finally, all of the nodes constructed by this BLOSSOM-LET are stashed in the pla
                   (address= (gethash left-value dictionary left-value)
                             right-value))
                  (otherwise
-                  (equalp left-value right-value)))))
+                  (equalp left-value right-value))))
+             (blossom-slots (value)
+               (initialize-and-return ((slots nil))
+                 (block quick-exit
+                   (dolist (superclass (closer-mop:class-precedence-list (class-of value)))
+                     (dolist (slot-definition (closer-mop:class-direct-slots superclass))
+                       (push (closer-mop:slot-definition-name slot-definition) slots))
+                     (when (equalp superclass (closer-mop:ensure-class
+                                               'anatevka:blossom-node))
+                       (return-from quick-exit)))))))
       (loop :for left :in left-nodes
             :for right :in right-nodes
             :do (setf (gethash (process-public-address left) dictionary)
@@ -269,9 +278,12 @@ Finally, all of the nodes constructed by this BLOSSOM-LET are stashed in the pla
       (anatevka::initialize-and-return ((test-result t))
         (loop :for left :in left-nodes
               :for right :in right-nodes
-              :do (loop :for slot :in (mapcar #'closer-mop:slot-definition-name
-                                              (closer-mop:class-direct-slots
-                                               (class-of left)))
+              :do (unless (equalp (class-of left) (class-of right))
+                    (format t "~&left (~a) class: ~a~%right (~a) class: ~a~%"
+                                      left (class-of left)
+                                      right (class-of right))
+                    (setf test-result nil))
+                 (loop :for slot :in (blossom-slots left)
                         :for left-value := (slot-value left slot)
                         :for right-value := (slot-value right slot)
                         :unless (test left-value right-value)

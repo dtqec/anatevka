@@ -65,7 +65,22 @@
 
 (define-process-upkeep ((supervisor supervisor) now)
     (CONVERGECAST-COLLECT-ROOTS source-root root-bucket)
-  "Recursively collects the `HELD-BY-ROOTS' values of `ROOT-BUCKET' to determine the set of roots that are participating in this `HOLD' cluster (meaning that they are mutually held by each other), starting with a base `cluster' of just the `SOURCE-ROOT'. If any replies are NIL, we abort."
+  "Recursively collects the `HELD-BY-ROOTS' values of `ROOT-BUCKET' to determine the set of roots that are participating in this `HOLD' cluster (meaning that they are mutually held by each other), starting with a base `cluster' of just the `SOURCE-ROOT'. If any replies are NIL, we abort.
+
+After collecting the `HOLD-CLUSTER', we then `CHECK-PRIORITY' to determine if we should proceed or abort.
+
+Then, we reach the \"critical segment\", where it becomes impossible to rewind partway through the modifications we're about to make:
+
+1. Lock the `HOLD-CLUSTER'.
+2. Check that each root in the `HOLD-CLUSTER' is still a root.
+3. Change the pingability of the cluster to `:SOFT'.
+4. Scan the `HOLD-CLUSTER' for the best external rec to use for reweighting.
+5. Change the pingability of the cluster to `:NONE'.
+6. Reweight the `HOLD-CLUSTER' according to the recommendation.
+7. Change the pingability of the cluster to `:SOFT'.
+8. Check to see if the `HOLD-CLUSTER' should be rewound, and do so if need be.
+9. Unlock the targets and tear down transient state.
+"
   (let ((cluster (list source-root)))
     (with-slots (hold-cluster) (peek (process-data-stack supervisor))
       (flet ((payload-constructor ()
@@ -90,7 +105,15 @@
           ;; otherwise, push the next set of commands onto the stack
           (process-continuation supervisor
                                 `(CHECK-PRIORITY ,source-root ,hold-cluster)
-                                `(START-INNER-MULTIREWEIGHT)))))))
+                                `(BROADCAST-LOCK ,hold-cluster)
+                                `(CHECK-ROOTS ,hold-cluster)
+                                `(BROADCAST-PINGABILITY ,hold-cluster :SOFT)
+                                `(MULTIREWEIGHT-BROADCAST-SCAN ,hold-cluster)
+                                `(BROADCAST-PINGABILITY ,hold-cluster :NONE)
+                                `(MULTIREWEIGHT-BROADCAST-REWEIGHT ,hold-cluster)
+                                `(BROADCAST-PINGABILITY ,hold-cluster :SOFT)
+                                `(MULTIREWEIGHT-CHECK-REWINDING ,hold-cluster)
+                                `(BROADCAST-UNLOCK)))))))
 
 (define-process-upkeep ((supervisor supervisor) now)
     (CHECK-PRIORITY source-root target-roots)
@@ -101,38 +124,11 @@
                     (send-message-batch #'make-message-id-query hold-cluster)
         (let ((cluster-id (reduce #'min-id replies)))
           (unless (equalp source-id (min-id source-id cluster-id))
+            (log-entry :entry-type 'aborting-multireweight
+                       :reason 'dont-have-priority
+                       :source-root source-root
+                       :hold-cluster hold-cluster)
             (setf (process-lockable-aborting? supervisor) t)))))))
-
-(define-process-upkeep ((supervisor supervisor) now) (START-INNER-MULTIREWEIGHT)
-  "This is the start of the \"critical segment\", where it begins to be impossible to rewind partway through the modifications we're about to make.
-
-1. Lock the `HOLD-CLUSTER'.
-2. Check that each root in the `HOLD-CLUSTER' is still a root.
-3. Change the pingability of the cluster to `:SOFT'.
-4. Scan the `HOLD-CLUSTER' for the best external rec to use for reweighting.
-5. Change the pingability of the cluster to `:NONE'.
-6. Reweight the `HOLD-CLUSTER' according to the recommendation.
-7. Change the pingability of the cluster to `:SOFT'.
-8. Check to see if the `HOLD-CLUSTER' should be rewound, and do so if need be.
-9. Unlock the targets and tear down transient state."
-  (with-slots (hold-cluster) (peek (process-data-stack supervisor))
-    (cond
-      ((not (process-lockable-aborting? supervisor))
-       (process-continuation supervisor
-                             `(BROADCAST-LOCK ,hold-cluster)
-                             `(CHECK-ROOTS ,hold-cluster)
-                             `(BROADCAST-PINGABILITY ,hold-cluster :SOFT)
-                             `(MULTIREWEIGHT-BROADCAST-SCAN ,hold-cluster)
-                             `(BROADCAST-PINGABILITY ,hold-cluster :NONE)
-                             `(MULTIREWEIGHT-BROADCAST-REWEIGHT ,hold-cluster)
-                             `(BROADCAST-PINGABILITY ,hold-cluster :SOFT)
-                             `(MULTIREWEIGHT-CHECK-REWINDING ,hold-cluster)
-                             `(BROADCAST-UNLOCK)))  ; don't destroy trees
-      (t
-       (log-entry :entry-type 'aborting-multireweight
-                  :reason 'previously-aborted
-                  :hold-cluster hold-cluster)
-       nil))))
 
 (define-process-upkeep ((supervisor supervisor) now)
     (MULTIREWEIGHT-BROADCAST-SCAN roots)

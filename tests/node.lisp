@@ -244,6 +244,8 @@ Finally, all of the nodes constructed by this BLOSSOM-LET are stashed in the pla
                         (mapcar (lambda (f) (gethash (funcall f l) dictionary))
                                 accessors)
                         (mapcar (lambda (f) (funcall f r)) accessors))))
+             (address-equalp (l r)
+               (address= (gethash l dictionary l) r))
              (test (left-value right-value)
                (typecase left-value
                  (list
@@ -253,13 +255,12 @@ Finally, all of the nodes constructed by this BLOSSOM-LET are stashed in the pla
                            (and (typep (first left-value) 'anatevka::blossom-edge)
                                 (every #'translated-edge= left-value right-value))
                            (and (typep (first left-value) 'aether::address)
-                                (every #'address= left-value right-value)))))
+                                (every #'address-equalp left-value right-value)))))
                  (anatevka::blossom-edge
                   (and (typep right-value 'anatevka::blossom-edge)
                        (translated-edge= left-value right-value)))
                  (anatevka::address
-                  (address= (gethash left-value dictionary left-value)
-                            right-value))
+                  (address-equalp left-value right-value))
                  (otherwise
                   (equalp left-value right-value))))
              (blossom-slots (value)

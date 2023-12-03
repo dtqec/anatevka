@@ -10,13 +10,21 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
+    # need bleeding edge aether now
+    - name: Check out aether
+      uses: actions/checkout@v4
+      with:
+        repository: dtqec/aether
+        path: aether
     - name: Check out anatevka
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
       with:
         path: anatevka
     - name: Initialize Lisp
       run: |
         sudo apt install sbcl
+        mkdir -p ${HOME}/quicklisp/local-projects
+        cp -R aether ${HOME}/quicklisp/local-projects/aether
         curl -o /tmp/quicklisp.lisp "http://beta.quicklisp.org/quicklisp.lisp"
         sbcl --noinform --non-interactive \
              --load /tmp/quicklisp.lisp \

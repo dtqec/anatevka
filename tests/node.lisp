@@ -178,28 +178,33 @@ where NODE-CLASS is replaced by OPTIONAL-NODE-CLASS if supplied or by BLOSSOM-NO
 
 Finally, all of the nodes constructed by this BLOSSOM-LET are stashed in the place indicated by TREE-NAME.  This is convenient for use with `TREE-EQUALP' and with `SIMULATE-ADD-TREE'."
   (let (addresses augmented-node-definitions)
-    ;; precompute addresses for the nodes
     (loop :for (symbol-name . rest) :in node-definitions
+          :for class-name := (if (keywordp (first rest))
+                                 'blossom-node
+                                 (first rest))
+          :for chopped-args := (if (keywordp (first rest))
+                                   rest
+                                   (rest rest))
+          ;; precompute addresses for the nodes.
+          ;; if the node arguments include :process-courier, use the provided
+          ;; courier instance when pre-registering the address for this node
+          :for courier := (getf chopped-args :process-courier)
+          :for courier-clause := (when courier `(:courier ,courier))
           :collect `(,symbol-name (register
+                                   ,@courier-clause
                                    :channel ',(gensym
                                                (format nil "TEST-BLOSSOM-~A"
                                                        symbol-name))))
             :into addresses-result
-          :finally (setf addresses addresses-result))
-    ;; process node-definition symbols into addresses
-    (loop :for (symbol-name . initargs) :in node-definitions
-          :for class-name := (if (keywordp (first initargs))
-                                 'blossom-node
-                                 (first initargs))
-          :for chopped-args := (if (keywordp (first initargs))
-                                   initargs
-                                   (rest initargs))
+          ;; then, set up definitions from clauses
           :collect `(,symbol-name (spawn-process ',class-name
                                                  :process-key ,symbol-name
                                                  ,@chopped-args
                                                  ,@global-options
-                                                 :debug? t)) :into result
-          :finally (setf augmented-node-definitions result))
+                                                 :debug? t))
+            :into definitions-result
+          :finally (setf addresses addresses-result
+                         augmented-node-definitions definitions-result))
     `(let ,addresses
        (declare (ignorable ,@(mapcar #'first node-definitions)))
        (let ,augmented-node-definitions

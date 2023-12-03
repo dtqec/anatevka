@@ -264,13 +264,13 @@ Finally, all of the nodes constructed by this BLOSSOM-LET are stashed in the pla
                   (equalp left-value right-value))))
              (blossom-slots (value)
                (initialize-and-return ((slots nil))
-                 (block quick-exit
+                 (block nil
                    (dolist (superclass (closer-mop:class-precedence-list (class-of value)))
                      (dolist (slot-definition (closer-mop:class-direct-slots superclass))
                        (push (closer-mop:slot-definition-name slot-definition) slots))
                      (when (equalp superclass (closer-mop:ensure-class
                                                'anatevka:blossom-node))
-                       (return-from quick-exit)))))))
+                       (return)))))))
       (loop :for left :in left-nodes
             :for right :in right-nodes
             :do (setf (gethash (process-public-address left) dictionary)

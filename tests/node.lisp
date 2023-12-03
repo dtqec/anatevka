@@ -180,7 +180,13 @@ Finally, all of the nodes constructed by this BLOSSOM-LET are stashed in the pla
   (let (addresses augmented-node-definitions)
     ;; precompute addresses for the nodes
     (loop :for (symbol-name . rest) :in node-definitions
+          ;; if the node arguments include :process-courier, use the provided
+          ;; courier instance when pre-registering the address for this node
+          :for courier-idx := (position ':process-courier rest)
+          :for courier := (when courier-idx (nth (1+ courier-idx) rest))
+          :for courier-clause := (when courier `(:courier ,courier))
           :collect `(,symbol-name (register
+                                   ,@courier-clause
                                    :channel ',(gensym
                                                (format nil "TEST-BLOSSOM-~A"
                                                        symbol-name))))
@@ -198,7 +204,8 @@ Finally, all of the nodes constructed by this BLOSSOM-LET are stashed in the pla
                                                  :process-key ,symbol-name
                                                  ,@chopped-args
                                                  ,@global-options
-                                                 :debug? t)) :into result
+                                                 :debug? t))
+            :into result
           :finally (setf augmented-node-definitions result))
     `(let ,addresses
        (declare (ignorable ,@(mapcar #'first node-definitions)))

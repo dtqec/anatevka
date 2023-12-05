@@ -75,7 +75,7 @@
     ;; the contents of `targets' depend on the recommendation. it always
     ;; includes the `source-root', and additionally
     ;;  - `AUGMENT': the `target-root'
-    ;;  - `GRAFT': the barbell
+    ;;  - `GRAFT': one end of the barbell
     ;;  - `EXPAND' or `CONTRACT': nothing
     (let ((targets (remove-duplicates (list source-root target-root)
                                       :test #'address=)))

@@ -77,6 +77,7 @@ PONG: The PONG that this process received at its START."
     (with-slots (edges weight source-root target-root recommendation) pong
       (log-entry :entry-type 'got-recommendation
                  :source-root source-root
+                 :target-root target-root
                  :recommendation recommendation
                  :weight weight
                  :edges edges)

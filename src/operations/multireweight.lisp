@@ -118,7 +118,8 @@ Then, we reach the \"critical segment\", where it becomes impossible to rewind p
 (define-process-upkeep ((supervisor supervisor) now)
     (CHECK-PRIORITY source-root target-roots)
   "Confirm that, of the roots in the hold cluster, we have priority to act. Namely, we have priority when our `SOURCE-ROOT' carries the minimum ID (i.e. coordinate) of all the roots in the `hold-cluster' (passed as `TARGET-ROOTS')."
-  (let ((hold-cluster target-roots))
+  ;; `target-roots' includes `source-root', so we begin by removing it
+  (let ((hold-cluster (remove source-root target-roots :test #'address=)))
     (sync-rpc (make-message-id-query) (source-id source-root)
       (with-replies (replies)
                     (send-message-batch #'make-message-id-query hold-cluster)

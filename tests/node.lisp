@@ -214,10 +214,16 @@ Finally, all of the nodes constructed by this BLOSSOM-LET are stashed in the pla
                                       '(list '(anatevka::IDLE)))))
            ,@body)))))
 
-(defun simulate-add-tree (simulation tree &key (start-time 0))
-  "BLOSSOM-LET binds a place that knows about all the nodes it's constructed, called the \"tree\".  SIMULATE-ADD-TREE takes the contents of this place and adds it to a SIMULATION object."
+(defun simulate-add-tree (simulation tree &key (start-time 0) (dryad nil) (sprouted? t))
+  "BLOSSOM-LET binds a place that knows about all the nodes it's constructed, called the \"tree\". SIMULATE-ADD-TREE takes the contents of this place and adds it to a SIMULATION object. If a `DRYAD' is provided, we set its slots for each node."
   (dolist (node tree)
-    (simulation-add-event simulation (make-event :callback node :time start-time))))
+    (simulation-add-event simulation (make-event :callback node :time start-time))
+    (when dryad
+      (unless (anatevka::blossom-node-petals node)
+        (let ((id (slot-value node 'anatevka::id))
+              (address (process-public-address node)))
+          (setf (gethash address (dryad-ids dryad))         id
+                (gethash address (dryad-sprouted? dryad))   sprouted?))))))
 
 (defun simulate-until-dead (simulation process &key (start-time 0) timeout)
   "Runs SIMULATION until PROCESS exhausts its command queue."

@@ -31,6 +31,12 @@
     :initform 'blossom-node
     :type symbol
     :documentation "The class identifier for nodes that this `DRYAD' works with. Can be a `BLOSSOM-NODE' or any subclass of `BLOSSOM-NODE'.")
+   (shuffle?
+    :accessor dryad-shuffle?
+    :initarg :shuffle?
+    :initform nil
+    :type boolean
+    :documentation "If T, the list of channels to try is shuffled before a `MESSAGE-DISCOVERY' is sent to the querying node.")
    ;; local state
    (ids
     :accessor dryad-ids
@@ -70,6 +76,8 @@ NOTE: In the basic implementation, these messages must be waiting for the DRYAD 
           (loop :for address :being :the :hash-keys :of (dryad-ids dryad)
                 :unless (address= address (message-discover-address message))
                   :collect address)))
+    (when (dryad-shuffle? dryad)
+      (setf channels (a:shuffle channels)))
     (send-message (message-reply-channel message)
                   (make-message-discovery :channels-to-try channels))))
 

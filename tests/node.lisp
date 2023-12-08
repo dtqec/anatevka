@@ -214,7 +214,7 @@ Finally, all of the nodes constructed by this BLOSSOM-LET are stashed in the pla
                                       '(list '(anatevka::IDLE)))))
            ,@body)))))
 
-(defun simulate-add-tree (simulation tree &key (start-time 0) (dryad nil) (sprouted? t))
+(defun simulate-add-tree (simulation tree &key (start-time 0) dryad (sprouted? t))
   "BLOSSOM-LET binds a place that knows about all the nodes it's constructed, called the \"tree\". SIMULATE-ADD-TREE takes the contents of this place and adds it to a SIMULATION object. If a `DRYAD' is provided, we set its slots for each node."
   (dolist (node tree)
     (simulation-add-event simulation (make-event :callback node :time start-time))

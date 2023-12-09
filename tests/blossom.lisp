@@ -206,7 +206,9 @@ NOTE: This macro automatically rescales the pairs in `COORDINATES' to reside at 
                         (dryad (spawn-process ',dryad-class
                                               :process-clock-rate ,dryad-clock-rate
                                               :match-address channel
-                                              :debug? ,debug?)))
+                                              :debug? ,debug?
+                                              :shuffle? t))
+                        (*random-state* (sb-kernel::seed-random-state i)))
                    (with-simulation (simulation (*local-courier* dryad))
                      (anatevka::reset-logger)
                      (when (= 0 (mod i 50))

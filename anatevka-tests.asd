@@ -17,6 +17,7 @@
   :components ((:file "package")
                (:file "suite")
                (:file "node")
+               (:file "dryad")
                (:module "operations"
                 :serial t
                 :components ((:file "graft")

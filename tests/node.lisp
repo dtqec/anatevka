@@ -222,8 +222,8 @@ Finally, all of the nodes constructed by this BLOSSOM-LET are stashed in the pla
       (unless (anatevka::blossom-node-petals node)
         (let ((id (slot-value node 'anatevka::id))
               (address (process-public-address node)))
-          (setf (gethash address (dryad-ids dryad))         id
-                (gethash address (dryad-sprouted? dryad))   sprouted?))))))
+          (setf (gethash address (dryad-ids dryad))        id
+                (gethash address (dryad-sprouted? dryad))  sprouted?))))))
 
 (defun simulate-until-dead (simulation process &key (start-time 0) timeout)
   "Runs SIMULATION until PROCESS exhausts its command queue."

@@ -178,17 +178,18 @@ NOTE: In the basic implementation, these messages must be waiting for the DRYAD 
         (topmost sprout)
       (sync-rpc (make-message-values :values '(children parent match-edge))
           ((children parent match-edge) topmost)
-        (when (or children parent)
-          (log-entry :entry-type 'aborting-dryad-expansion
-                     :reason 'tree-structure))
-        (unless (or children parent)
-          (log-entry :entry-type 'dryad-sending-expand
-               :sprout sprout
-               :topmost topmost
-               :match-edge match-edge)
-          (sync-rpc (make-message-expand)
-              (expand-reply topmost)
-            nil))))))
+        (cond
+          ((or children parent)
+           (log-entry :entry-type 'aborting-dryad-expansion
+                      :reason 'tree-structure))
+          (t
+           (log-entry :entry-type 'dryad-sending-expand
+                      :sprout sprout
+                      :topmost topmost
+                      :match-edge match-edge)
+           (sync-rpc (make-message-expand)
+               (expand-reply topmost)
+             nil)))))))
 
 (define-process-upkeep ((dryad dryad) now) (WIND-DOWN &optional (counter 50))
   (unless (zerop counter)

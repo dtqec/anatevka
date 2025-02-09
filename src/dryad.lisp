@@ -118,14 +118,14 @@ NOTE: In the basic implementation, these messages must be waiting for the DRYAD 
 (define-process-upkeep ((dryad dryad) now) (SPROUTS-LOOP)
   "Loop over sprouted nodes, looking for ripe pairs."
   ;; if not everyone is sprouted, hold off
-  (when (loop :for sprouted? :in (a:hash-table-values (dryad-sprouted? dryad))
-              :always (not sprouted?))
+  (unless (loop :for sprouted? :in (a:hash-table-values (dryad-sprouted? dryad))
+                :always sprouted?)
     (process-continuation dryad `(SPROUTS-LOOP))
     (finish-with-scheduling))
   (let ((addresses (a:hash-table-keys (dryad-sprouted? dryad))))
     (flet ((payload-constructor ()
              (make-message-values :reply-channel (register)
-                                      :values '(match-edge))))
+                                  :values '(match-edge))))
       (with-replies (replies) (send-message-batch #'payload-constructor addresses)
         ;; make sure everyone has a match. any that doesn't is in a blossom
         ;; which needs to be expanded.

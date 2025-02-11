@@ -118,14 +118,14 @@ NOTE: In the basic implementation, these messages must be waiting for the DRYAD 
 (define-process-upkeep ((dryad dryad) now) (SPROUTS-LOOP)
   "Loop over sprouted nodes, looking for ripe pairs."
   ;; if not everyone is sprouted, hold off
-  (when (loop :for sprouted? :in (a:hash-table-values (dryad-sprouted? dryad))
-              :always (not sprouted?))
+  (unless (loop :for sprouted? :in (a:hash-table-values (dryad-sprouted? dryad))
+                :always sprouted?)
     (process-continuation dryad `(SPROUTS-LOOP))
     (finish-with-scheduling))
   (let ((addresses (a:hash-table-keys (dryad-sprouted? dryad))))
     (flet ((payload-constructor ()
              (make-message-values :reply-channel (register)
-                                      :values '(match-edge))))
+                                  :values '(match-edge))))
       (with-replies (replies) (send-message-batch #'payload-constructor addresses)
         ;; make sure everyone has a match. any that doesn't is in a blossom
         ;; which needs to be expanded.
@@ -178,17 +178,18 @@ NOTE: In the basic implementation, these messages must be waiting for the DRYAD 
         (topmost sprout)
       (sync-rpc (make-message-values :values '(children parent match-edge))
           ((children parent match-edge) topmost)
-        (when (or children parent)
-          (log-entry :entry-type 'aborting-dryad-expansion
-                     :reason 'tree-structure))
-        (unless (or children parent)
-          (log-entry :entry-type 'dryad-sending-expand
-               :sprout sprout
-               :topmost topmost
-               :match-edge match-edge)
-          (sync-rpc (make-message-expand)
-              (expand-reply topmost)
-            nil))))))
+        (cond
+          ((or children parent)
+           (log-entry :entry-type 'aborting-dryad-expansion
+                      :reason 'tree-structure))
+          (t
+           (log-entry :entry-type 'dryad-sending-expand
+                      :sprout sprout
+                      :topmost topmost
+                      :match-edge match-edge)
+           (sync-rpc (make-message-expand)
+               (expand-reply topmost)
+             nil)))))))
 
 (define-process-upkeep ((dryad dryad) now) (WIND-DOWN &optional (counter 50))
   (unless (zerop counter)

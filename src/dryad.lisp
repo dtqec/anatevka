@@ -50,6 +50,13 @@
     :documentation "A map ADDRESS -> BOOLEAN which records whether a `BLOSSOM-NODE' has begun participating in matches."))
   (:documentation "PROCESS responsible for the injection and ejection of nodes from the blossom algorithm."))
 
+(defgeneric create-discovery-message (dryad &key channels-to-try id)
+  (:documentation "Generic `MESSAGE-DISCOVERY' constructor that dispatches on the type of `DRYAD' that is creating it. `CHANNELS-TO-TRY' is the same as the `DISCOVERY-MESSAGE' slot, and `ID' is the same as the `DISCOVER-MESSAGE' slot."))
+
+(defmethod create-discovery-message ((dryad dryad) &key channels-to-try id)
+  (declare (ignore dryad id))  ; for this method, these arguments have no effect
+  (make-message-discovery :channels-to-try channels-to-try))
+
 ;;;
 ;;; passive DRYAD message handlers
 ;;;
@@ -79,7 +86,9 @@ NOTE: In the basic implementation, these messages must be waiting for the DRYAD 
     (when (dryad-shuffle? dryad)
       (setf channels (a:shuffle channels)))
     (send-message (message-reply-channel message)
-                  (make-message-discovery :channels-to-try channels))))
+                  (create-discovery-message dryad
+                                            :channels-to-try channels
+                                            :id (message-discover-id message)))))
 
 (define-message-handler handler-message-sprout
     ((dryad dryad) (message message-sprout) now)

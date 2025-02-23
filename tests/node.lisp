@@ -46,8 +46,8 @@
                   :weight 0
                   :recommendation ':hold))
          (graft-0 (anatevka::make-message-pong
-                     :weight 0
-                     :recommendation ':graft))
+                   :weight 0
+                   :recommendation ':graft))
          (zero-weighters (list augment-0 graft-0 contract-0)))
     ;; non-zero AUGMENTs have higher precedence than equal-weight ops
     (is (every #'identity
@@ -287,10 +287,10 @@ Finally, all of the nodes constructed by this BLOSSOM-LET are stashed in the pla
               :for right :in right-nodes
               :do (unless (equalp (class-of left) (class-of right))
                     (format t "~&left (~a) class: ~a~%right (~a) class: ~a~%"
-                                      left (class-of left)
-                                      right (class-of right))
+                            left (class-of left)
+                            right (class-of right))
                     (setf test-result nil))
-                 (loop :for slot :in (blossom-slots left)
+                  (loop :for slot :in (blossom-slots left)
                         :for left-value := (slot-value left slot)
                         :for right-value := (slot-value right slot)
                         :unless (test left-value right-value)

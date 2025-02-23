@@ -24,11 +24,15 @@
   (internal-weight nil :type real) ; NOTE: a little surprised that this isn't (REAL 0)
   (repeat?         nil :type boolean)) 
 
-(defstruct (message-discovery (:include message))
+(defstruct (message-discovery (:include message)
+                              (:constructor %make-message-discovery))
   "The response to a DISCOVER message.
 
 CHANNELS-TO-TRY: The addresses to send PINGs to."
   (channels-to-try nil :type list))
+
+(defgeneric make-discovery-message (dryad &key channels-to-try id)
+  (:documentation "Generic `MESSAGE-DISCOVERY' constructor that dispatches on the type of `DRYAD' that is creating it. `CHANNELS-TO-TRY' is the same as the `DISCOVERY-MESSAGE' slot, and `ID' is the same as the `DISCOVER-MESSAGE' slot."))
 
 (defstruct (message-wilt (:include message))
   "An instruction to a `BLOSSOM-NODE' to cease operation as a process.")

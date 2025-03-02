@@ -101,11 +101,17 @@
              (and (eql 'SUPERVISOR (getf entry ':source-type))
                   (eql 'MULTIREWEIGHTING (getf entry ':entry-type)))
              (and (eql 'MESSAGE-WILT (type-of (getf entry ':payload))))
-             (and (eql 'HANDLING-SOW (getf entry ':entry-type)))
-             ;; dryad expansion
-             (and (eql 'COMMAND (getf entry ':entry-type))
-                  (eql 'SEND-EXPAND (getf entry ':command)))
-             (and (eql 'DRYAD-SENDING-EXPAND (getf entry ':entry-type)))
              (and (eql 'SPAWNED-FRESH-BLOSSOM (getf entry ':entry-type)))
              (and (eql 'BLOSSOM-EXTINGUISHED (getf entry ':entry-type))))
+         (push entry entries))
+        ;; dryad logs
+        ((and (eql 'DRYAD (getf entry ':source-type))
+              ;; dryad sowing
+              (or (eql 'HANDLING-SOW (getf entry ':entry-type))
+                  (eql 'HANDLING-SPROUT (getf entry ':entry-type))
+                  (eql 'PROCESSING-PAIR (getf entry ':entry-type))
+                  ;; dryad expansion
+                  (and (eql 'COMMAND (getf entry ':entry-type))
+                       (eql 'SEND-EXPAND (getf entry ':command)))
+                  (eql 'DRYAD-SENDING-EXPAND (getf entry ':entry-type))))
          (push entry entries))))))

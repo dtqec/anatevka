@@ -69,6 +69,9 @@ NOTE: In the basic implementation, these messages must be waiting for the DRYAD 
                                       :id node-id
                                       :debug? (process-debug? dryad)))
          (node-address (process-public-address node-process)))
+    (log-entry :entry-type 'handling-sow
+               :address node-address
+               :id node-id)
     (schedule node-process now)
     (setf (gethash node-address (dryad-ids       dryad)) node-id
           (gethash node-address (dryad-sprouted? dryad)) nil)))
@@ -91,7 +94,10 @@ NOTE: In the basic implementation, these messages must be waiting for the DRYAD 
     ((dryad dryad) (message message-sprout) now)
   "Handles a SPROUT message, indicating that a BLOSSOM-NODE has been matched (for the first time)."
   (with-slots (address) message
-    (when (gethash address (dryad-ids dryad))
+    (a:when-let ((id (gethash address (dryad-ids dryad))))
+      (log-entry :entry-type 'handling-sprout
+                 :address address
+                 :id id)
       (setf (gethash address (dryad-sprouted? dryad)) t))))
 
 (define-rpc-handler handler-message-wilting
@@ -124,24 +130,41 @@ NOTE: In the basic implementation, these messages must be waiting for the DRYAD 
 (define-process-upkeep ((dryad dryad) now) (SPROUTS-LOOP)
   "Loop over sprouted nodes, looking for ripe pairs."
   ;; if not everyone is sprouted, hold off
-  (unless (loop :for sprouted? :in (a:hash-table-values (dryad-sprouted? dryad))
-                :always sprouted?)
+  ;; NB: the loop returns T if the hash table is empty, so we additionally
+  ;;     guard against that
+  (unless (and (plusp (hash-table-count (dryad-sprouted? dryad)))
+               (loop :for sprouted? :in (a:hash-table-values (dryad-sprouted? dryad))
+                     :always sprouted?))
     (process-continuation dryad `(SPROUTS-LOOP))
     (finish-with-scheduling))
   (let ((addresses (a:hash-table-keys (dryad-sprouted? dryad))))
     (flet ((payload-constructor ()
              (make-message-values :reply-channel (register)
-                                  :values '(match-edge))))
+                                  :values '(match-edge pistil
+                                            parent children))))
       (with-replies (replies) (send-message-batch #'payload-constructor addresses)
-        ;; make sure everyone has a match. any that doesn't is in a blossom
-        ;; which needs to be expanded.
-        (loop :for address :in addresses
-              :for reply :in replies
-              :when (null (first reply))
-                :do (process-continuation dryad
-                                          `(SEND-EXPAND ,address)
-                                          `(SPROUTS-LOOP))
-                    (finish-with-scheduling))
+        ;; verify some local state
+        (let (mid-augment?)
+          (loop :for address :in addresses
+                :for (match-edge pistil parent children) :in replies
+                ;; if we have a parent or children, we're in the middle of an augment
+                :when (or parent children)
+                  :do (setf mid-augment? t)
+                      ;; if we don't have a match, then we are inside a macrovertex that
+                      ;; needs to be expanded
+                :when (null match-edge)
+                  :do (assert pistil () "How are we matchless but have no pistil?")
+                      (process-continuation dryad
+                                            `(SEND-EXPAND ,address)
+                                            `(SPROUTS-LOOP))
+                      (finish-with-scheduling))
+          ;; if we're in the middle of an augment, we should pause for a bit
+          ;; NB: it is deliberate that we defer this to after the loop, so that we
+          ;;     might prefer to SEND-EXPAND vs. just waiting bc of an augment
+          (when mid-augment?
+            (process-continuation dryad
+                                  `(SPROUTS-LOOP))
+            (finish-with-scheduling)))
         ;; all clear!
         (let ((emitted-addresses nil)
               (pairs nil))
@@ -150,15 +173,14 @@ NOTE: In the basic implementation, these messages must be waiting for the DRYAD 
                    (right-address (blossom-edge-target-vertex (first reply)))
                    (left-member (member left-address emitted-addresses :test #'address=))
                    (right-member (member right-address emitted-addresses :test #'address=))
-                   (ids (list (gethash left-address  (dryad-ids dryad))
-                              (gethash right-address (dryad-ids dryad)))))
+                   (address-pair (list left-address right-address)))
               (cond
                 ((and left-member right-member)
                  nil)
                 ((and (not left-member) (not right-member))
                  (push left-address emitted-addresses)
                  (push right-address emitted-addresses)
-                 (push ids pairs))
+                 (push address-pair pairs))
                 (t
                  (error "Two distinct match edges laid claim to the same vertex.")))))
           (process-continuation dryad
@@ -166,10 +188,15 @@ NOTE: In the basic implementation, these messages must be waiting for the DRYAD 
                                 `(WIND-DOWN)))))))
 
 (define-process-upkeep ((dryad dryad) now) (PROCESS-PAIRS pairs)
-  "Iterates through `PAIRS' and sends corresponding REAP messages."
-  (dolist (pair pairs)
-    (send-message (dryad-match-address dryad)
-                  (make-message-reap :ids pair))))
+  "Iterates through `PAIRS' of addresses and sends corresponding WILT and REAP messages."
+  (dolist (address-pair pairs)
+    (log-entry :entry-type 'processing-pair
+               :pair address-pair)
+    (send-message-batch #'make-message-wilt address-pair)
+    (let ((id-pair (list (gethash (first address-pair) (dryad-ids dryad))
+                         (gethash (second address-pair) (dryad-ids dryad)))))
+      (send-message (dryad-match-address dryad)
+                    (make-message-reap :ids id-pair)))))
 
 (define-process-upkeep ((dryad dryad) now) (SEND-EXPAND sprout)
   "Directs SPROUT to perform blossom expansion."

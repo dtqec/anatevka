@@ -162,15 +162,14 @@ NOTE: In the basic implementation, these messages must be waiting for the DRYAD 
                    (right-address (blossom-edge-target-vertex (first reply)))
                    (left-member (member left-address emitted-addresses :test #'address=))
                    (right-member (member right-address emitted-addresses :test #'address=))
-                   (ids (list (gethash left-address  (dryad-ids dryad))
-                              (gethash right-address (dryad-ids dryad)))))
+                   (address-pair (list left-address right-address)))
               (cond
                 ((and left-member right-member)
                  nil)
                 ((and (not left-member) (not right-member))
                  (push left-address emitted-addresses)
                  (push right-address emitted-addresses)
-                 (push ids pairs))
+                 (push address-pair pairs))
                 (t
                  (error "Two distinct match edges laid claim to the same vertex.")))))
           (process-continuation dryad
@@ -178,10 +177,15 @@ NOTE: In the basic implementation, these messages must be waiting for the DRYAD 
                                 `(WIND-DOWN)))))))
 
 (define-process-upkeep ((dryad dryad) now) (PROCESS-PAIRS pairs)
-  "Iterates through `PAIRS' and sends corresponding REAP messages."
-  (dolist (pair pairs)
-    (send-message (dryad-match-address dryad)
-                  (make-message-reap :ids pair))))
+  "Iterates through `PAIRS' of addresses and sends corresponding WILT and REAP messages."
+  (dolist (address-pair pairs)
+    (log-entry :entry-type 'processing-pair
+               :pair address-pair)
+    (send-message-batch #'make-message-wilt address-pair)
+    (let ((id-pair (list (gethash (first address-pair) (dryad-ids dryad))
+                         (gethash (second address-pair) (dryad-ids dryad)))))
+      (send-message (dryad-match-address dryad)
+                    (make-message-reap :ids id-pair)))))
 
 (define-process-upkeep ((dryad dryad) now) (SEND-EXPAND sprout)
   "Directs SPROUT to perform blossom expansion."

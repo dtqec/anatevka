@@ -131,17 +131,29 @@ NOTE: In the basic implementation, these messages must be waiting for the DRYAD 
   (let ((addresses (a:hash-table-keys (dryad-sprouted? dryad))))
     (flet ((payload-constructor ()
              (make-message-values :reply-channel (register)
-                                  :values '(match-edge))))
+                                  :values '(match-edge pistil
+                                            parent children))))
       (with-replies (replies) (send-message-batch #'payload-constructor addresses)
-        ;; make sure everyone has a match. any that doesn't is in a blossom
-        ;; which needs to be expanded.
-        (loop :for address :in addresses
-              :for reply :in replies
-              :when (null (first reply))
-                :do (process-continuation dryad
-                                          `(SEND-EXPAND ,address)
-                                          `(SPROUTS-LOOP))
-                    (finish-with-scheduling))
+        ;; verify some local state
+        (let (mid-augment?)
+          (loop :for address :in addresses
+                :for (match-edge pistil parent children) :in replies
+                ;; if we have a parent or children, we're in the middle of an augment
+                :when (or parent children)
+                  :do (setf mid-augment? t)
+                      ;; if we don't have a match, then we are inside a macrovertex that
+                      ;; needs to be expanded
+                :when (null match-edge)
+                  :do (assert pistil () "How are we matchless but have no pistil?")
+                      (process-continuation dryad
+                                            `(SEND-EXPAND ,address)
+                                            `(SPROUTS-LOOP))
+                      (finish-with-scheduling))
+          ;; if we're in the middle of an augment, we should pause for a bit
+          (when mid-augment?
+            (process-continuation dryad
+                                  `(SPROUTS-LOOP))
+            (finish-with-scheduling)))
         ;; all clear!
         (let ((emitted-addresses nil)
               (pairs nil))

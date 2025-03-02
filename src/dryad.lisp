@@ -69,6 +69,9 @@ NOTE: In the basic implementation, these messages must be waiting for the DRYAD 
                                       :id node-id
                                       :debug? (process-debug? dryad)))
          (node-address (process-public-address node-process)))
+    (log-entry :entry-type 'handling-sow
+               :address node-address
+               :id node-id)
     (schedule node-process now)
     (setf (gethash node-address (dryad-ids       dryad)) node-id
           (gethash node-address (dryad-sprouted? dryad)) nil)))
@@ -91,7 +94,10 @@ NOTE: In the basic implementation, these messages must be waiting for the DRYAD 
     ((dryad dryad) (message message-sprout) now)
   "Handles a SPROUT message, indicating that a BLOSSOM-NODE has been matched (for the first time)."
   (with-slots (address) message
-    (when (gethash address (dryad-ids dryad))
+    (a:when-let ((id (gethash address (dryad-ids dryad))))
+      (log-entry :entry-type 'handling-sprout
+                 :address address
+                 :id id)
       (setf (gethash address (dryad-sprouted? dryad)) t))))
 
 (define-rpc-handler handler-message-wilting

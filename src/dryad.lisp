@@ -132,7 +132,7 @@ NOTE: In the basic implementation, these messages must be waiting for the DRYAD 
   ;; if not everyone is sprouted, hold off
   ;; NB: the loop returns T if the hash table is empty, so we additionally
   ;;     guard against that
-  (unless (and (a:hash-table-values (dryad-sprouted? dryad))
+  (unless (and (plusp (hash-table-count (dryad-sprouted? dryad)))
                (loop :for sprouted? :in (a:hash-table-values (dryad-sprouted? dryad))
                      :always sprouted?))
     (process-continuation dryad `(SPROUTS-LOOP))
@@ -159,6 +159,8 @@ NOTE: In the basic implementation, these messages must be waiting for the DRYAD 
                                             `(SPROUTS-LOOP))
                       (finish-with-scheduling))
           ;; if we're in the middle of an augment, we should pause for a bit
+          ;; NB: it is deliberate that we defer this to after the loop, so that we
+          ;;     might prefer to SEND-EXPAND vs. just waiting bc of an augment
           (when mid-augment?
             (process-continuation dryad
                                   `(SPROUTS-LOOP))

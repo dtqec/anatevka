@@ -130,8 +130,11 @@ NOTE: In the basic implementation, these messages must be waiting for the DRYAD 
 (define-process-upkeep ((dryad dryad) now) (SPROUTS-LOOP)
   "Loop over sprouted nodes, looking for ripe pairs."
   ;; if not everyone is sprouted, hold off
-  (unless (loop :for sprouted? :in (a:hash-table-values (dryad-sprouted? dryad))
-                :always sprouted?)
+  ;; NB: the loop returns T if the hash table is empty, so we additionally
+  ;;     guard against that
+  (unless (and (a:hash-table-values (dryad-sprouted? dryad))
+               (loop :for sprouted? :in (a:hash-table-values (dryad-sprouted? dryad))
+                     :always sprouted?))
     (process-continuation dryad `(SPROUTS-LOOP))
     (finish-with-scheduling))
   (let ((addresses (a:hash-table-keys (dryad-sprouted? dryad))))

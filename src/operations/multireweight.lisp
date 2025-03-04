@@ -93,7 +93,7 @@ Then, we reach the \"critical segment\", where it becomes impossible to rewind p
                        :hold-cluster cluster
                        :held-by-roots root-bucket)
             (setf (process-lockable-aborting? supervisor) t)
-            (finish-with-scheduling))
+            (finish-handler))
           (setf hold-cluster (reduce #'address-union (list* cluster replies)))
           ;; don't bother _multi_reweighting if we're in a cluster of 1.
           (when (endp (rest hold-cluster))
@@ -101,7 +101,7 @@ Then, we reach the \"critical segment\", where it becomes impossible to rewind p
                        :reason 'cluster-of-one
                        :hold-cluster hold-cluster)
             (setf (process-lockable-aborting? supervisor) t)
-            (finish-with-futures))
+            (finish-handler))
           ;; otherwise, push the next set of commands onto the stack
           (process-continuation supervisor
                                 `(CHECK-PRIORITY ,source-root ,hold-cluster)

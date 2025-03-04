@@ -20,7 +20,7 @@
     (setf (blossom-node-parent node)    nil
           (blossom-node-children node)  nil
           (blossom-node-positive? node) t))
-  (schedule* (call-next-method)))
+  (call-next-method))
 
 ;;;
 ;;; blossom-node handlers
@@ -32,10 +32,10 @@
   (when (blossom-node-wilting node)
     (send-message (message-reply-channel message)
                   (make-message-rpc-done :result nil))
-    (finish-with-scheduling))
+    (finish-handler))
   (unless (process-lockable-locked? node)
     (setf (blossom-node-pingable node) ':NONE))
-  (schedule* (call-next-method)))
+  (call-next-method))
 
 ;;;
 ;;; supervisor command definitions

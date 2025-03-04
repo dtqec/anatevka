@@ -136,6 +136,7 @@ NOTE: In the basic implementation, these messages must be waiting for the DRYAD 
                (loop :for sprouted? :in (a:hash-table-values (dryad-sprouted? dryad))
                      :always sprouted?))
     (process-continuation dryad `(SPROUTS-LOOP))
+    (wake-on-network)
     (finish-handler))
   (let ((addresses (a:hash-table-keys (dryad-sprouted? dryad))))
     (flet ((payload-constructor ()

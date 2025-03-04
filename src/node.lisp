@@ -451,20 +451,22 @@ evalutes to
   "If we're out of things to do & unmatched, consider starting a SCAN.  If REPEAT? is set, then this is  _not_ our first time trying to SCAN to find something to do, and the previous attempt(s) resulted in no action."
   (unless (blossom-node-wilting node)
     (process-continuation node `(SCAN-LOOP))
-    (unless (or (process-lockable-locked? node)
-                (blossom-node-parent node)
-                (blossom-node-pistil node)
-                (blossom-node-match-edge node)
-                (blossom-node-paused? node))
-      ;; doing this manual command injection rather than sending a message is a
-      ;; stopgap against sending multiple SCAN messages, which looks gross / wrong.
-      (let ((scan-message (make-message-scan
-                           :local-root (process-public-address node)
-                           :weight 0
-                           :repeat? repeat?)))
-        
-        (process-continuation node `(START-SCAN ,scan-message))))))
+    (when (or (process-lockable-locked? node)
+              (blossom-node-parent node)
+              (blossom-node-pistil node)
+              (blossom-node-match-edge node)
+              (blossom-node-paused? node))
+      (wake-on-network)
+      (finish-handler))
+    ;; doing this manual command injection rather than sending a message is a
+    ;; stopgap against sending multiple SCAN messages, which looks gross / wrong.
+    (let ((scan-message (make-message-scan
+                         :local-root (process-public-address node)
+                         :weight 0
+                         :repeat? repeat?)))
+      (process-continuation node `(START-SCAN ,scan-message)))))
 
 (define-process-upkeep ((node blossom-node) now) (IDLE)
   (unless (blossom-node-wilting node)
-    (process-continuation node `(IDLE))))
+    (process-continuation node `(IDLE))
+    (wake-on-network)))

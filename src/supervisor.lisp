@@ -162,7 +162,7 @@ PONG: The PONG that this process received at its START."
                :returned? returned? :message-type message-pong :message-unpacker identity)
             (when returned?
               (setf (process-lockable-aborting? supervisor) t)
-              (finish-with-scheduling))
+              (finish-handler))
             (setf (blossom-edge-source-node
                    (car (last (message-pong-edges replica-pong))))
                   local-blossom

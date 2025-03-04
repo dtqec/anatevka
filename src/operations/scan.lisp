@@ -220,7 +220,7 @@ When INTERNAL-ROOT-SET is supplied, discard HOLD recommendations which emanate f
       ;; we can't use FINISH-SCAN without setting up the data frame,
       ;; so we elect to send the message directly from START-SCAN
       (send-message reply-channel (make-pong node)))
-    (finish-with-scheduling))
+    (finish-handler))
   ;; load data frame
   (let* ((local-root (or (slot-value scan-message 'local-root)
                          (process-public-address node)))
@@ -486,7 +486,7 @@ This handler is responsible for actually assigning a recommended-next-move for t
     (when (blossom-node-pistil node)
       ;; ... keep throwing up pistil.
       (send-message (blossom-node-pistil node) message)
-      (finish-with-scheduling))
+      (finish-handler))
     ;; otherwise, record the first toplevel node we see as our parent blossom.
     ;; CRITICALLY, this does NOT prematurely return.
     (unless (blossom-edge-target-node last-edge)
@@ -497,7 +497,7 @@ This handler is responsible for actually assigning a recommended-next-move for t
     (when (blossom-node-parent node)
       (send-message (blossom-edge-target-node (blossom-node-parent node))
                     message)
-      (finish-with-scheduling))
+      (finish-handler))
     ;; otherwise, we're at the root.
     (let ((target-root (process-public-address node))
           (recommendation (recommend node ping pong message)))
@@ -556,5 +556,5 @@ This handler is responsible for actually assigning a recommended-next-move for t
     (when (message-reply-channel message)
       (send-message (message-reply-channel message)
                     (make-pong node)))
-    (finish-with-scheduling))
+    (finish-handler))
   (process-continuation node `(START-SCAN ,message)))

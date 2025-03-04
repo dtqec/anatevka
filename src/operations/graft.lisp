@@ -47,7 +47,7 @@
                    (address= negative-child
                              (blossom-edge-target-node parent-neg-edge)))
         (setf (process-lockable-aborting? supervisor) t)
-        (finish-with-scheduling))
+        (finish-handler))
       (process-continuation supervisor
                             `(BROADCAST-LOCK ,targets)
                             `(CHECK-ROOTS (,source-root))

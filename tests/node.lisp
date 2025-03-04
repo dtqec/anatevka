@@ -146,10 +146,11 @@
                           (make-event :callback *local-courier* :time 0))
     (simulation-add-event simulation (make-event :callback dryad :time 0))
     ;; set up simulation components
-    (loop :for j :from 1 :to 8
-          :for id := (make-mma-id :value j)
-          :do (send-message (process-public-address dryad)
-                            (anatevka::make-message-sow :id id)))
+    (with-active-simulation simulation
+      (loop :for j :from 1 :to 8
+            :for id := (make-mma-id :value j)
+            :do (send-message (process-public-address dryad)
+                              (anatevka::make-message-sow :id id))))
     ;; run simulation until maximally matched (i.e., the dryad terminates)
     (simulation-run simulation :canary (canary-process dryad))
     (labels ((drain-match-address (&optional acc)

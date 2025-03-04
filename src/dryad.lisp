@@ -136,7 +136,7 @@ NOTE: In the basic implementation, these messages must be waiting for the DRYAD 
                (loop :for sprouted? :in (a:hash-table-values (dryad-sprouted? dryad))
                      :always sprouted?))
     (process-continuation dryad `(SPROUTS-LOOP))
-    (finish-with-scheduling))
+    (finish-handler))
   (let ((addresses (a:hash-table-keys (dryad-sprouted? dryad))))
     (flet ((payload-constructor ()
              (make-message-values :reply-channel (register)
@@ -157,14 +157,14 @@ NOTE: In the basic implementation, these messages must be waiting for the DRYAD 
                       (process-continuation dryad
                                             `(SEND-EXPAND ,address)
                                             `(SPROUTS-LOOP))
-                      (finish-with-scheduling))
+                      (finish-handler))
           ;; if we're in the middle of an augment, we should pause for a bit
           ;; NB: it is deliberate that we defer this to after the loop, so that we
           ;;     might prefer to SEND-EXPAND vs. just waiting bc of an augment
           (when mid-augment?
             (process-continuation dryad
                                   `(SPROUTS-LOOP))
-            (finish-with-scheduling)))
+            (finish-handler)))
         ;; all clear!
         (let ((emitted-addresses nil)
               (pairs nil))

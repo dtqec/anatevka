@@ -173,7 +173,7 @@
                :reason 'mateless-blossom
                :blossom node)
     (send-message reply-channel (make-message-rpc-done))
-    (finish-with-scheduling))
+    (finish-handler))
   (labels ((finalize (matched-node root-node)
              ;; determines path from `root-node' to `matched-node', so
              ;; should `:key' on `source-node' of the `petals'

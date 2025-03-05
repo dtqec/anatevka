@@ -327,7 +327,7 @@ evalutes to
 (define-rpc-handler handle-message-set
     ((node blossom-node) (message message-set) now)
   "Handles a remote SETF request."
-  (with-slots (slots values reply-channel) message
+  (with-slots (slots values) message
     (loop :for slot :in slots
           :for value :in values
           :do (setf (slot-value node slot) value))
@@ -336,14 +336,14 @@ evalutes to
 (define-rpc-handler handle-message-push
     ((node blossom-node) (message message-push) now)
   "Handles a remote PUSH request."
-  (with-slots (slot value reply-channel) message
+  (with-slots (slot value) message
     (push value (slot-value node slot))
     (values)))
 
 (define-rpc-handler handle-message-values
     ((node blossom-node) (message message-values) now)
   "Handles a remote request for data."
-  (with-slots (values reply-channel) message
+  (with-slots (values) message
     (loop :for value :in values
           :collect (slot-value node value))))
 

@@ -47,7 +47,7 @@
 ;;; supervisor command definitions
 ;;;
 
-(define-process-upkeep ((supervisor supervisor) now) (START-EXPAND pong)
+(define-process-upkeep ((supervisor supervisor)) (START-EXPAND pong)
   "Sets up the expand procedure."
   (with-slots (source-root) pong
     (let ((targets (list source-root))
@@ -60,7 +60,7 @@
                             `(BROADCAST-UNLOCK)
                             `(HALT)))))
 
-(define-process-upkeep ((supervisor supervisor) now) (CHECK-INNER-BLOSSOM blossom source-root)
+(define-process-upkeep ((supervisor supervisor)) (CHECK-INNER-BLOSSOM blossom source-root)
   "When a supervisor is in charge of blossom expansion, we know that the blossom to be expanded is necessarily an inner blossom.  Why?  Because outer blossoms don't get an expand recommendation from the tree, and barbell blossoms are expanded by the dryad. However, as is common in this distributed algorithm, there are many opportunities for information to go stale, and so before we tell the blossom to expand itself, we double check that it is, in fact, an inner blossom, by checking its `internal-weight', `positive?', and `pistil' slots, as well as making sure that its root is as the supervisor expected, which ensures that everything is a-OK."
   (unless (process-lockable-aborting? supervisor)
     (sync-rpc (make-message-values :values '(internal-weight pistil positive?))
@@ -72,7 +72,7 @@
                                  (blossom-edge-source-node (first root-path-result)))))
           (setf (process-lockable-aborting? supervisor) t))))))
 
-(define-process-upkeep ((supervisor supervisor) now) (EXPAND-INNER-BLOSSOM blossom)
+(define-process-upkeep ((supervisor supervisor)) (EXPAND-INNER-BLOSSOM blossom)
   "Blossom expansion is handled by the blossom itself. This instruction just triggers the expansion routine remotely and waits for it to complete."
   (unless (process-lockable-aborting? supervisor)
     (sync-rpc (make-message-expand)
@@ -105,7 +105,7 @@
 ;;;
 
 (define-message-handler handle-message-expand
-    ((node blossom-node) (message message-expand) now)
+    ((node blossom-node) (message message-expand))
   "Starts the procedure for popping a contracting blossom."
   (cond
     ((blossom-node-pistil node)
@@ -121,7 +121,7 @@
      (process-continuation node `(EXPAND-BLOSSOM ,(message-reply-channel message))))))
 
 (define-message-handler handle-message-blossom-parent
-    ((node blossom-node) (message message-blossom-parent) now)
+    ((node blossom-node) (message message-blossom-parent))
   "Calculates the topmost blossom which contains NODE, subject to the possible limitation that we not exceed STOP-BEFORE."
   (with-slots (reply-channel stop-before) message
     (cond
@@ -141,7 +141,7 @@
        (send-message (blossom-node-pistil node) message)))))
 
 (define-rpc-handler handle-message-replace-child
-    ((node blossom-node) (message message-replace-child) now)
+    ((node blossom-node) (message message-replace-child))
   "Replaces a child edge targeting a given node by an edge targeting another node."
   (with-slots (reply-channel old-child new-child) message
     (dolist (child-edge (blossom-node-children node))
@@ -159,7 +159,7 @@
 ;;;       message handlers. nonetheless, see the SUPERVISOR documentation for
 ;;;       a description of what's happening here.
 
-(define-process-upkeep ((node blossom-node) now) (EXPAND-BLOSSOM reply-channel)
+(define-process-upkeep ((node blossom-node)) (EXPAND-BLOSSOM reply-channel)
   "Sets up the EXPAND stack frame."
   ;; NOTE: because sync-receive does some implicit coroutine junk, performing
   ;;       operations after it executes conditionally + not repeating ourselves
@@ -207,7 +207,7 @@
         (t
          (finalize matched-node matched-node))))))
 
-(define-process-upkeep ((node blossom-node) now) (EXPAND-BLOSSOM-BUILD-TREE-PATH path index)
+(define-process-upkeep ((node blossom-node)) (EXPAND-BLOSSOM-BUILD-TREE-PATH path index)
   "This command walks the path from `root-node'->`matched-node', establishing all the parent and child relationships and setting `positive?' accordingly.  The parent/child relationship between the blossom's parent and `root-node' is established separatedly in `EXPAND-BLOSSOM-ATTACH-PARENT'. The parent/child relationship between the blossom's match and `matched-node', as well as the `positive?' setting of `matched-node', is implemented separately in the `EXPAND-BLOSSOM-ATTACH-MATCH' command.
 
                       root                   root
@@ -248,7 +248,7 @@ In the above example, `path' would be (`b0-->b1', `b1-->b2'), and so we build th
             (set-result (blossom-edge-target-node edge))
           nil)))))
 
-(define-process-upkeep ((node blossom-node) now) (EXPAND-BLOSSOM-ADD-CYCLE-MATCHES full-path)
+(define-process-upkeep ((node blossom-node)) (EXPAND-BLOSSOM-ADD-CYCLE-MATCHES full-path)
   "This command detaches all of the blossom children from their `pistil'  (except for the `matched-node', which is handled separately in the command `EXPAND-BLOSSOM-ATTACH-MATCH'). In addition, it establishes all the `match-edge' relationships in the cycle, both in the alternating tree and for lone barbells.
 
                       root                   root
@@ -287,7 +287,7 @@ In the above example, `full-path' would originally be (`b2-->b3', `b3-->b4', `b4
         :finally (with-replies (replies) rx-channels
                    nil)))
 
-(define-process-upkeep ((node blossom-node) now) (EXPAND-BLOSSOM-ATTACH-PARENT root-node)
+(define-process-upkeep ((node blossom-node)) (EXPAND-BLOSSOM-ATTACH-PARENT root-node)
   "This command takes the blossom's parent relationship and pushes it onto the petal node that is the source vertex of the relationship. This should be performed whenever the blossom has a parent, even if `root-node' is equal to `matched-node'.
 
 Here are two example configurations:
@@ -323,7 +323,7 @@ Note that in the right diagram, b0 is both the `root-node' and the `matched-node
             (replace-result (blossom-edge-target-node parent-edge))
           nil)))))
 
-(define-process-upkeep ((node blossom-node) now) (EXPAND-BLOSSOM-ATTACH-MATCH matched-node root-node)
+(define-process-upkeep ((node blossom-node)) (EXPAND-BLOSSOM-ATTACH-MATCH matched-node root-node)
   "This command takes the blossom's match relationship and pushes it onto the petal vertex that is the source vertex of the relationship.
 
        r ---> [b0    ]                 r ---> [b0    ] ===> a
@@ -383,7 +383,7 @@ In the right diagram, b0 is both the `root-node' and the `matched-node', because
     (with-replies (replies) rx-channels
       nil)))
 
-(define-process-upkeep ((node blossom-node) now) (EXTINGUISH-BLOSSOM reply-channel)
+(define-process-upkeep ((node blossom-node)) (EXTINGUISH-BLOSSOM reply-channel)
   "Tell this blossom process to die."
   ;; NOTE: There's no data frame to pop.
   (when reply-channel

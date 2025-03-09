@@ -78,7 +78,7 @@ PETAL-CHILD-EDGES: The list of child edges attached to the blossoms in the subtr
 ;;; supervisor command definitions
 ;;;
 
-(define-process-upkeep ((supervisor supervisor) now) (START-CONTRACT pong)
+(define-process-upkeep ((supervisor supervisor)) (START-CONTRACT pong)
   "Begins the CONTRACT routine, sets up the stack frames."
   (with-slots (source-root) pong
     (let ((targets (list source-root)))
@@ -93,7 +93,7 @@ PETAL-CHILD-EDGES: The list of child edges attached to the blossoms in the subtr
                             `(BROADCAST-UNLOCK)
                             `(HALT)))))
 
-(define-process-upkeep ((supervisor supervisor) now) (START-INNER-CONTRACT)
+(define-process-upkeep ((supervisor supervisor)) (START-INNER-CONTRACT)
   "Begins the critical section of the CONTRACT routine."
   (unless (process-lockable-aborting? supervisor)
     (let* ((supervisor-frame (peek (process-data-stack supervisor)))
@@ -102,7 +102,7 @@ PETAL-CHILD-EDGES: The list of child edges attached to the blossoms in the subtr
                                          ;; prevent SCANs
                                          :paused? t
                                          :debug? (process-debug? supervisor))))
-      (schedule fresh-blossom now)
+      (schedule fresh-blossom (now))
       (log-entry :entry-type 'spawned-fresh-blossom
                  :fresh-blossom fresh-blossom)
       (push (make-data-frame-contract
@@ -120,20 +120,20 @@ PETAL-CHILD-EDGES: The list of child edges attached to the blossoms in the subtr
                             `(BROADCAST-UNLOCK) ; NOTE: double-calling BROADCAST-UNLOCK makes
                             `(RELEASE-STOWED-LOCK))))) ; the second one a NOP.
 
-(define-process-upkeep ((supervisor supervisor) now) (STOW-LOCK)
+(define-process-upkeep ((supervisor supervisor)) (STOW-LOCK)
   (with-slots (downward-rx-latches downward-tx-latches) supervisor
     (with-slots (stowed-rx-latch stowed-tx-latch) (peek (process-data-stack supervisor))
       (setf stowed-rx-latch (pop downward-rx-latches)
             stowed-tx-latch (pop downward-tx-latches)))))
 
-(define-process-upkeep ((supervisor supervisor) now) (RELEASE-STOWED-LOCK)
+(define-process-upkeep ((supervisor supervisor)) (RELEASE-STOWED-LOCK)
   (with-slots (downward-rx-latches downward-tx-latches) supervisor
     (with-slots (stowed-rx-latch stowed-tx-latch) (pop (process-data-stack supervisor))
       (push stowed-rx-latch downward-rx-latches)
       (push stowed-tx-latch downward-tx-latches)
       (process-continuation supervisor `(BROADCAST-UNLOCK)))))
 
-(define-process-upkeep ((supervisor supervisor) now) (COMPUTE-BLOSSOM-PATHS)
+(define-process-upkeep ((supervisor supervisor)) (COMPUTE-BLOSSOM-PATHS)
   "This command computes the cycle which will constitute the fresh blossom.
 
                    G      <--      root     -->    G
@@ -211,7 +211,7 @@ Both above tree diagrams are valid arrangments that would trigger this operation
                       (list (copy-blossom-edge edge))
                       (reverse-blossom-edges recipient-tail)))))))
 
-(define-process-upkeep ((supervisor supervisor) now) (HANDLE-PISTIL)
+(define-process-upkeep ((supervisor supervisor)) (HANDLE-PISTIL)
   "Tell the source of the peduncle edge that the fresh blossom is its child.
 
                 G      <--        root       -->    G
@@ -233,7 +233,7 @@ If we have a non-null peduncle edge (F -> C above), then we need to tell its sou
             (attach-result (blossom-edge-source-node peduncle-edge))
           nil)))))
 
-(define-process-upkeep ((supervisor supervisor) now) (HANDLE-PETALS)
+(define-process-upkeep ((supervisor supervisor)) (HANDLE-PETALS)
   "Tell the blossom's petals what's up."
   (with-slots (path fresh-blossom petal-child-edges) (peek (process-data-stack supervisor))
     (let ((children (mapcar #'blossom-edge-target-node path)))
@@ -248,7 +248,7 @@ If we have a non-null peduncle edge (F -> C above), then we need to tell its sou
                                      :test #'address=))
                            (apply #'append petal-child-edges petal-replies))))))))
 
-(define-process-upkeep ((supervisor supervisor) now) (HANDLE-BLOSSOM-SUB-CHILDREN)
+(define-process-upkeep ((supervisor supervisor)) (HANDLE-BLOSSOM-SUB-CHILDREN)
   "Tell all the other children what's up."
   (with-slots (fresh-blossom petal-child-edges) (peek (process-data-stack supervisor))
     (let ((petal-children (mapcar #'blossom-edge-target-node petal-child-edges)))
@@ -258,7 +258,7 @@ If we have a non-null peduncle edge (F -> C above), then we need to tell its sou
                       (send-message-batch #'payload-constructor petal-children)
           nil)))))
 
-(define-process-upkeep ((supervisor supervisor) now) (HANDLE-NEW-BLOSSOM)
+(define-process-upkeep ((supervisor supervisor)) (HANDLE-NEW-BLOSSOM)
   "Tell the blossom itself what's up."
   (let ((frame (peek (process-data-stack supervisor))))
     (with-slots (fresh-blossom peduncle-edge path petal-child-edges) frame
@@ -310,7 +310,7 @@ If we have a non-null peduncle edge (F -> C above), then we need to tell its sou
 ;;;
 
 (define-message-handler handle-message-root-path
-    ((node blossom-node) (message message-root-path) now)
+    ((node blossom-node) (message message-root-path))
   "Calculates the path from a blossom through to the tree root (consisting only of toplevel blossoms)."
   (with-slots (path reply-channel) message
     (cond
@@ -327,7 +327,7 @@ If we have a non-null peduncle edge (F -> C above), then we need to tell its sou
                      (make-message-rpc-done :result path))))))
 
 (define-rpc-handler handle-message-attach-parent
-    ((node blossom-node) (message message-attach-parent) now)
+    ((node blossom-node) (message message-attach-parent))
   "Attaches a fresh blossom to an existing parent."
   (with-slots (peduncle-edge reply-channel fresh-blossom) message
     (assert (not (null peduncle-edge)))
@@ -346,7 +346,7 @@ If we have a non-null peduncle edge (F -> C above), then we need to tell its sou
     nil))
 
 (define-rpc-handler handle-message-convert-child-to-petal
-    ((node blossom-node) (message message-convert-child-to-petal) now)
+    ((node blossom-node) (message message-convert-child-to-petal))
   "Attaches an old child to a new blossom as a petal."
   (with-slots (reply-channel fresh-blossom) message
     (prog1 (blossom-node-children node)
@@ -357,7 +357,7 @@ If we have a non-null peduncle edge (F -> C above), then we need to tell its sou
             (blossom-node-children node)   nil))))
 
 (define-rpc-handler handle-message-reattach-cycle-child
-    ((node blossom-node) (message message-reattach-cycle-child) now)
+    ((node blossom-node) (message message-reattach-cycle-child))
   "Attaches an old child to a new blossom as a (non-blossom-)child."
   (with-slots (reply-channel fresh-blossom) message
     (setf (blossom-edge-target-node (blossom-node-parent node))
@@ -368,7 +368,7 @@ If we have a non-null peduncle edge (F -> C above), then we need to tell its sou
 ;;       the fresh blossom responsible for setting _itself_ up. this would also
 ;;       alleviate the obnoxious problem with locking/spawning timing.
 (define-rpc-handler handle-message-set-up-blossom
-    ((node blossom-node) (message message-set-up-blossom) now)
+    ((node blossom-node) (message message-set-up-blossom))
   "Sets up a new contracting blossom's slots."
   (with-slots (peduncle-edge petals petal-children dryad reply-channel) message
     (loop :for petal-child :in petal-children

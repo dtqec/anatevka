@@ -12,7 +12,7 @@
   (mapcar #'blossom-edge-target-node (union (blossom-node-petals node)
                                             (blossom-node-children node))))
 
-(define-process-upkeep ((node blossom-node) now)
+(define-process-upkeep ((node blossom-node))
     (aether::%FINISH-UNLOCK)
   (setf (blossom-node-pingable node) ':ALL)
   (setf (blossom-node-held-by-roots node) nil)
@@ -27,7 +27,7 @@
 ;;;
 
 (define-message-handler handle-message-lock
-    ((node blossom-node) (message message-lock) now)
+    ((node blossom-node) (message message-lock))
   "Prepares a BLOSSOM-NODE to be locked."
   (when (blossom-node-wilting node)
     (send-message (message-reply-channel message)
@@ -41,7 +41,7 @@
 ;;; supervisor command definitions
 ;;;
 
-(define-process-upkeep ((supervisor supervisor) now)
+(define-process-upkeep ((supervisor supervisor))
     (BROADCAST-UNLOCK &key destroy? &allow-other-keys)
   "Cleans up after BROADCAST-LOCK."
   (with-slots (aborting? done-signal downward-rx-latches downward-tx-latches upward-tx-latch) supervisor

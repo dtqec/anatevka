@@ -208,7 +208,7 @@ When INTERNAL-ROOT-SET is supplied, discard HOLD recommendations which emanate f
 ;;; blossom-node command definitions
 ;;;
 
-(define-process-upkeep ((node blossom-node) now) (START-SCAN scan-message)
+(define-process-upkeep ((node blossom-node)) (START-SCAN scan-message)
   "Sets up the scanning procedure stack frames."
   ;; if the node is wilting, we don't want it to start a scan, because it's
   ;; going to reach out to the dryad to get a list of addresses to ping, but
@@ -274,7 +274,7 @@ When INTERNAL-ROOT-SET is supplied, discard HOLD recommendations which emanate f
                           `(FORWARD-SCAN ,forwarding-addresses)
                           `(FINISH-SCAN ,(message-reply-channel scan-message)))))
 
-(define-process-upkeep ((node blossom-node) now) (CONTACT-DRYAD)
+(define-process-upkeep ((node blossom-node)) (CONTACT-DRYAD)
   "Request from the dryad responsible for this node a list of candidate node neighbors with which to coordinate for this node's next operation.  Defers the actual processing of that list to PROCESS-ADDRESSES."
   (unless (or (blossom-node-petals node)
               (not (blossom-node-positive? node)))
@@ -296,12 +296,12 @@ When INTERNAL-ROOT-SET is supplied, discard HOLD recommendations which emanate f
           (t
            (process-continuation node `(PROCESS-ADDRESSES ,discovery-message))))))))
 
-(define-process-upkeep ((node blossom-node) now) (PROCESS-ADDRESSES discovery-message)
+(define-process-upkeep ((node blossom-node)) (PROCESS-ADDRESSES discovery-message)
   "Performs postprocessing, if any, on the list of candidate neighbor nodes received from the dryad, then sets up the PING command to start communicating with them."
   (with-slots (channels-to-try) discovery-message
     (process-continuation node `(PING ,channels-to-try))))
 
-(define-process-upkeep ((node blossom-node) now) (FORWARD-SCAN addresses)
+(define-process-upkeep ((node blossom-node)) (FORWARD-SCAN addresses)
   "Sends a SCAN message to each of the children tabulated in ADDRESSES."
   (with-slots (local-root local-blossom weight pong soft? internal-roots repeat?)
       (peek (process-data-stack node))
@@ -331,7 +331,7 @@ When INTERNAL-ROOT-SET is supplied, discard HOLD recommendations which emanate f
                 :unless (null reply)
                   :do (setf pong (unify-pongs pong reply :internal-root-set internal-roots))))))))
 
-(define-process-upkeep ((node blossom-node) now) (PING vertices)
+(define-process-upkeep ((node blossom-node)) (PING vertices)
   "Sends a PING message to any neighboring vertices as previously provided by the DISCOVER query sent to the dryad.
 
 NOTE: this command is only installed when NODE is a vertex."
@@ -368,7 +368,7 @@ NOTE: this command is only installed when NODE is a vertex."
                                 (blossom-edge-source-node edge) local-blossom)))
                       (setf pong (unify-pongs reply pong :internal-root-set internal-roots))))))))
 
-(define-process-upkeep ((node blossom-node) now) (FINISH-SCAN reply-channel)
+(define-process-upkeep ((node blossom-node)) (FINISH-SCAN reply-channel)
   "Finalize the SCAN procedure's stack frames. this includes forwarding the result to a parent if one instigated the SCAN procedure, or spawning a new SUPERVISOR process to handle the result if this SCAN was spontaneous."
   (with-slots (pong) (pop (process-data-stack node))
     (with-slots (recommendation root-bucket) pong
@@ -412,7 +412,7 @@ NOTE: this command is only installed when NODE is a vertex."
                       :pong pong
                       :address (process-public-address supervisor))
            (push pong (process-data-stack supervisor))
-           (schedule supervisor now)))
+           (schedule supervisor (now))))
         (t
          (when (eql 'SCAN-LOOP (first (first (process-command-stack node))))
            (setf (first (process-command-stack node))
@@ -439,7 +439,7 @@ NOTE: this command is only installed when NODE is a vertex."
 ;;;       arrangement for a source that is ignorant of the recipient's ID.
 
 (define-message-handler handle-message-ping
-    ((node blossom-node) (message message-ping) now)
+    ((node blossom-node) (message message-ping))
   "Begins the process of responding to a PING message: starts an ADJOIN-ROOT sequence."
   (with-slots (weight id recipient-child reply-channel root) message
     (let* ((total-weight (+ weight
@@ -467,7 +467,7 @@ NOTE: this command is only installed when NODE is a vertex."
                              :pong pong)))))
 
 (define-message-handler handle-message-adjoin-root
-    ((node blossom-node) (message message-adjoin-root) now)
+    ((node blossom-node) (message message-adjoin-root))
   "The workhorse of responding to a PING message: walks up the blossom contractions, then up the maximally-contracted tree, ultimately resulting in a PONG.
 
 This handler is responsible for actually assigning a recommended-next-move for the blossom algorithm, which makes up the bulk of the function body."
@@ -550,7 +550,7 @@ This handler is responsible for actually assigning a recommended-next-move for t
          (error "Unknown blossom case."))))))
 
 (define-message-handler handle-message-scan
-    ((node blossom-node) (message message-scan) now)
+    ((node blossom-node) (message message-scan))
   "Begins a scanning process."
   (when (blossom-node-wilting node)
     (when (message-reply-channel message)

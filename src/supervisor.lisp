@@ -71,7 +71,7 @@ PONG: The PONG that this process received at its START."
   (:method ((recommendation (eql ':HOLD)))
     'START-MULTIREWEIGHT))
 
-(define-process-upkeep ((supervisor supervisor) now) (START)
+(define-process-upkeep ((supervisor supervisor)) (START)
   "Set up initial state: the stack frame and which procedure to branch on."
   (let ((pong (pop (process-data-stack supervisor))))
     (with-slots (edges weight source-root target-root recommendation) pong
@@ -104,7 +104,7 @@ PONG: The PONG that this process received at its START."
           (t
            (error "Unknown error when unpacking recommendation of weight ~a" weight)))))))
 
-(define-process-upkeep ((supervisor supervisor) now) (HALT)
+(define-process-upkeep ((supervisor supervisor)) (HALT)
   "Stop the current `SUPERVISOR' and announce whether it's been a success. Additionally, unpause the `SOURCE-ROOT' so that it can start scanning again."
   (with-slots (pong) (pop (process-data-stack supervisor))
     (with-slots (source-root) pong
@@ -120,7 +120,7 @@ PONG: The PONG that this process received at its START."
 ;;; sanity checks
 ;;;
 
-(define-process-upkeep ((supervisor supervisor) now) (CHECK-ROOTS roots)
+(define-process-upkeep ((supervisor supervisor)) (CHECK-ROOTS roots)
   "Ensure that these nodes are still actually unmatched roots."
   (unless (process-lockable-aborting? supervisor)
     (flet ((payload-constructor ()
@@ -130,7 +130,7 @@ PONG: The PONG that this process received at its START."
               :do (when (or parent pistil match-edge)
                 (setf (process-lockable-aborting? supervisor) t)))))))
 
-(define-process-upkeep ((supervisor supervisor) now) (CHECK-PONG stale-pong)
+(define-process-upkeep ((supervisor supervisor)) (CHECK-PONG stale-pong)
   "Ensure that two locked trees still agree that this is a responsible weightless operation."
   (unless (process-lockable-aborting? supervisor)
     (with-slots (target-vertex source-node)
@@ -174,19 +174,19 @@ PONG: The PONG that this process received at its START."
                                   `(EVALUATE-CHECK-PONG ,stale-pong ,local-pong
                                                         ,replica-pong))))))))
 
-(define-process-upkeep ((supervisor supervisor) now)
+(define-process-upkeep ((supervisor supervisor))
     (EVALUATE-CHECK-PONG stale-pong local-pong replica-pong)
   "CHECK-PONG results in a refreshed REPLICA-PONG, which we're to compare against STALE-PONG and LOCAL-PONG, aborting if they differ in a way that indicates stale information."
   (setf (process-lockable-aborting? supervisor)
         (not (pong= stale-pong replica-pong))))
 
-(define-process-upkeep ((supervisor supervisor) now) (ENSURE-ABORTING pong)
+(define-process-upkeep ((supervisor supervisor)) (ENSURE-ABORTING pong)
   "This command is used upon encountering a negatively-weighted edge rec, to cause the algorithm to crash if the recommendation doesn't resolve itself."
   (unless (process-lockable-aborting? supervisor)
     (with-slots (weight) pong
       (error "Running CHECK-PONG didn't fix a negative-weight edge: ~a" pong))))
 
-(define-process-upkeep ((supervisor supervisor) now)
+(define-process-upkeep ((supervisor supervisor))
     (BROADCAST-PINGABILITY targets new-type)
   "Instruct the trees rooted at `TARGETS' to change their pingability to `NEW-TYPE'."
   (unless (process-lockable-aborting? supervisor)

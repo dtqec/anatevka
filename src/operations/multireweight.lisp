@@ -50,7 +50,7 @@
 ;;; supervisor command definitions
 ;;;
 
-(define-process-upkeep ((supervisor supervisor) now) (START-MULTIREWEIGHT pong)
+(define-process-upkeep ((supervisor supervisor)) (START-MULTIREWEIGHT pong)
   "Sets up the multireweight procedure by first collecting mutually-held roots, which form the `HOLD-CLUSTER'."
   ;; NOTE: we couldn't call MAKE-PONG even if we wanted to, since we don't have
   ;;       access to the underlying node's Lisp object (or its type).
@@ -63,7 +63,7 @@
                           `(FINISH-MULTIREWEIGHT)
                           `(HALT))))
 
-(define-process-upkeep ((supervisor supervisor) now)
+(define-process-upkeep ((supervisor supervisor))
     (CONVERGECAST-COLLECT-ROOTS source-root root-bucket)
   "Recursively collects the `HELD-BY-ROOTS' values of `ROOT-BUCKET' to determine the set of roots that are participating in this `HOLD' cluster (meaning that they are mutually held by each other), starting with a base `cluster' of just the `SOURCE-ROOT'. If any replies are NIL, we abort.
 
@@ -115,7 +115,7 @@ Then, we reach the \"critical segment\", where it becomes impossible to rewind p
                                 `(MULTIREWEIGHT-CHECK-REWINDING ,hold-cluster)
                                 `(BROADCAST-UNLOCK)))))))
 
-(define-process-upkeep ((supervisor supervisor) now)
+(define-process-upkeep ((supervisor supervisor))
     (CHECK-PRIORITY source-root target-roots)
   "Confirm that, of the roots in the hold cluster, we have priority to act. Namely, we have priority when our `SOURCE-ROOT' carries the minimum ID (i.e. coordinate) of all the roots in the `hold-cluster' (passed as `TARGET-ROOTS')."
   ;; `target-roots' includes `source-root', so we begin by removing it
@@ -131,7 +131,7 @@ Then, we reach the \"critical segment\", where it becomes impossible to rewind p
                        :hold-cluster hold-cluster)
             (setf (process-lockable-aborting? supervisor) t)))))))
 
-(define-process-upkeep ((supervisor supervisor) now)
+(define-process-upkeep ((supervisor supervisor))
     (MULTIREWEIGHT-BROADCAST-SCAN roots)
   "Now that we know the full `HOLD-CLUSTER', we `SCAN' each, and aggregate the results in order to make a reweighting decision."
   (unless (process-lockable-aborting? supervisor)
@@ -148,7 +148,7 @@ Then, we reach the \"critical segment\", where it becomes impossible to rewind p
                     (setf internal-pong
                           (unify-pongs internal-pong reply))))))))
 
-(define-process-upkeep ((supervisor supervisor) now)
+(define-process-upkeep ((supervisor supervisor))
     (MULTIREWEIGHT-BROADCAST-REWEIGHT roots)
   "Having aggregated coordinated advice, we now enact it by sending individual reweight instructions to all the `ROOTS'. This is achieved via the `BROADCAST-REWEIGHT' command."
   (unless (process-lockable-aborting? supervisor)
@@ -160,14 +160,14 @@ Then, we reach the \"critical segment\", where it becomes impossible to rewind p
                    :roots roots)
         (process-continuation supervisor `(BROADCAST-REWEIGHT ,roots ,amount))))))
 
-(define-process-upkeep ((supervisor supervisor) now)
+(define-process-upkeep ((supervisor supervisor))
     (MULTIREWEIGHT-CHECK-REWINDING roots)
   "Just as when we're reweighting, now we have to check to make sure we didn't create any negative-weight edges. We do so by pushing the `CHECK-REWINDING' command onto the command stack."
   (unless (process-lockable-aborting? supervisor)
     (with-slots (internal-pong) (peek (process-data-stack supervisor))
       (process-continuation supervisor `(CHECK-REWINDING ,roots ,internal-pong 0)))))
 
-(define-process-upkeep ((supervisor supervisor) now) (FINISH-MULTIREWEIGHT)
+(define-process-upkeep ((supervisor supervisor)) (FINISH-MULTIREWEIGHT)
   "Clean up after the local state of the multireweight operation."
   (pop (process-data-stack supervisor)))
 
@@ -185,7 +185,7 @@ Then, we reach the \"critical segment\", where it becomes impossible to rewind p
 
 
 (define-convergecast-handler handle-message-convergecast-collect-roots
-    ((node blossom-node) (message message-convergecast-collect-roots) now)
+    ((node blossom-node) (message message-convergecast-collect-roots))
   "Check to see if we're held. If not, `RETURN-FROM-CAST' and send back up a NIL. If we are held, add ourselves to the `HOLD-CLUSTER'. Additionally, if we are held by `NEW-ROOTS' that aren't currently in the cluster, forward this message along to them to continue gathering roots. Finally, send the aggregated cluster back to the sender."
   (with-slots (hold-cluster reply-channel) message
     ;; If we're not held, abort the convergecast.

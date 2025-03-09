@@ -59,7 +59,7 @@
 ;;;
 
 (define-message-handler handler-message-sow
-    ((dryad dryad) (message message-sow) now)
+    ((dryad dryad) (message message-sow))
   "Adjoin a new node to the problem graph.
 
 NOTE: In the basic implementation, these messages must be waiting for the DRYAD on launch."
@@ -72,12 +72,12 @@ NOTE: In the basic implementation, these messages must be waiting for the DRYAD 
     (log-entry :entry-type 'handling-sow
                :address node-address
                :id node-id)
-    (schedule node-process now)
+    (schedule node-process (now))
     (setf (gethash node-address (dryad-ids       dryad)) node-id
           (gethash node-address (dryad-sprouted? dryad)) nil)))
 
 (define-message-handler handler-message-discover
-    ((dryad dryad) (message message-discover) now)
+    ((dryad dryad) (message message-discover))
   "Handles a DISCOVER message, sent by a BLOSSOM-NODE which expects a list of other BLOSSOM-NODE addresses to which it should send PINGs."
   (let ((channels
           (loop :for address :being :the :hash-keys :of (dryad-ids dryad)
@@ -91,7 +91,7 @@ NOTE: In the basic implementation, these messages must be waiting for the DRYAD 
                                           :id (message-discover-id message)))))
 
 (define-message-handler handler-message-sprout
-    ((dryad dryad) (message message-sprout) now)
+    ((dryad dryad) (message message-sprout))
   "Handles a SPROUT message, indicating that a BLOSSOM-NODE has been matched (for the first time)."
   (with-slots (address) message
     (a:when-let ((id (gethash address (dryad-ids dryad))))
@@ -101,7 +101,7 @@ NOTE: In the basic implementation, these messages must be waiting for the DRYAD 
       (setf (gethash address (dryad-sprouted? dryad)) t))))
 
 (define-rpc-handler handler-message-wilting
-    ((dryad dryad) (message message-wilting) now)
+    ((dryad dryad) (message message-wilting))
   "Handles a wilting message, indicating that a BLOSSOM-NODE is dying."
   (with-slots (address) message
     (let ((id (gethash address (dryad-ids dryad))))
@@ -123,11 +123,11 @@ NOTE: In the basic implementation, these messages must be waiting for the DRYAD 
 ;;; DRYAD command definitions
 ;;;
 
-(define-process-upkeep ((dryad dryad) now) (START)
+(define-process-upkeep ((dryad dryad)) (START)
   "Start listening for ripe sprouted pairs."
   (process-continuation dryad `(SPROUTS-LOOP)))
 
-(define-process-upkeep ((dryad dryad) now) (SPROUTS-LOOP)
+(define-process-upkeep ((dryad dryad)) (SPROUTS-LOOP)
   "Loop over sprouted nodes, looking for ripe pairs."
   ;; if not everyone is sprouted, hold off
   ;; NB: the loop returns T if the hash table is empty, so we additionally
@@ -188,7 +188,7 @@ NOTE: In the basic implementation, these messages must be waiting for the DRYAD 
                                 `(PROCESS-PAIRS ,pairs)
                                 `(WIND-DOWN)))))))
 
-(define-process-upkeep ((dryad dryad) now) (PROCESS-PAIRS pairs)
+(define-process-upkeep ((dryad dryad)) (PROCESS-PAIRS pairs)
   "Iterates through `PAIRS' of addresses and sends corresponding WILT and REAP messages."
   (dolist (address-pair pairs)
     (log-entry :entry-type 'processing-pair
@@ -199,7 +199,7 @@ NOTE: In the basic implementation, these messages must be waiting for the DRYAD 
       (send-message (dryad-match-address dryad)
                     (make-message-reap :ids id-pair)))))
 
-(define-process-upkeep ((dryad dryad) now) (SEND-EXPAND sprout)
+(define-process-upkeep ((dryad dryad)) (SEND-EXPAND sprout)
   "Directs SPROUT to perform blossom expansion."
   (unless (process-lockable-aborting? dryad)
     ;; if we directly send the sprout a blossom-expand message, it will
@@ -225,6 +225,6 @@ NOTE: In the basic implementation, these messages must be waiting for the DRYAD 
                (expand-reply topmost)
              nil)))))))
 
-(define-process-upkeep ((dryad dryad) now) (WIND-DOWN &optional (counter 50))
+(define-process-upkeep ((dryad dryad)) (WIND-DOWN &optional (counter 50))
   (unless (zerop counter)
     (process-continuation dryad `(WIND-DOWN ,(1- counter)))))

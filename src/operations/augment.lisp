@@ -43,7 +43,7 @@
 ;;; supervisor command definitions
 ;;;
 
-(define-process-upkeep ((supervisor supervisor) now) (START-AUGMENT pong)
+(define-process-upkeep ((supervisor supervisor)) (START-AUGMENT pong)
   "Sets up the augmentation procedure."
   (with-slots (edges source-root target-root) pong
     (let* ((edge (first edges))
@@ -59,7 +59,7 @@
                             `(BROADCAST-UNLOCK :destroy? ,T)
                             `(HALT)))))
 
-(define-process-upkeep ((supervisor supervisor) now) (AUGMENT edge)
+(define-process-upkeep ((supervisor supervisor)) (AUGMENT edge)
   "Perform an augmentation along a given edge."
   (unless (process-lockable-aborting? supervisor)
     (log-entry :entry-type 'augment
@@ -82,7 +82,7 @@
 ;;;
 
 (define-message-handler handle-message-percolate
-    ((node blossom-node) (message message-percolate) now)
+    ((node blossom-node) (message message-percolate))
   "Performs a step in the path augmentation process."
   (with-slots (traversal-edge reply-channel) message
     ;; does the previous node expect me to link to it?

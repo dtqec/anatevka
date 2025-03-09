@@ -282,7 +282,7 @@ evalutes to
     (if (string< x y) x y)))
 
 (define-message-subordinate handle-message-id-query
-    ((node blossom-node) (message message-id-query) now)
+    ((node blossom-node) (message message-id-query))
   "Replies with the minimum ID at this macrovertex."
   (cond
     ((null (blossom-node-petals node))
@@ -306,7 +306,7 @@ evalutes to
 ;; tree to respond to a safe subset (or to all) of PING requests.
 
 (define-broadcast-handler handle-message-broadcast-pingability
-    ((node blossom-node) (message message-broadcast-pingability) now)
+    ((node blossom-node) (message message-broadcast-pingability))
   "Changes the pingability of `NODE' (and children / petals) to `PING-TYPE'."
   (with-slots (ping-type) message
     (log-entry :entry-type 'changing-pingability
@@ -325,7 +325,7 @@ evalutes to
 ;;     better to implement the micromessages after all.
 
 (define-rpc-handler handle-message-set
-    ((node blossom-node) (message message-set) now)
+    ((node blossom-node) (message message-set))
   "Handles a remote SETF request."
   (with-slots (slots values) message
     (loop :for slot :in slots
@@ -334,14 +334,14 @@ evalutes to
     (values)))
 
 (define-rpc-handler handle-message-push
-    ((node blossom-node) (message message-push) now)
+    ((node blossom-node) (message message-push))
   "Handles a remote PUSH request."
   (with-slots (slot value) message
     (push value (slot-value node slot))
     (values)))
 
 (define-rpc-handler handle-message-values
-    ((node blossom-node) (message message-values) now)
+    ((node blossom-node) (message message-values))
   "Handles a remote request for data."
   (with-slots (values) message
     (loop :for value :in values
@@ -355,7 +355,7 @@ evalutes to
 ;; and should halt its process.
 
 (define-message-handler handle-message-sprout-on-blossom
-    ((node blossom-node) (message message-sprout) now)
+    ((node blossom-node) (message message-sprout))
   "Handles a request that a root node (perhaps not a vertex) alert the DRYAD that it has sprouted."
   (cond
     ((blossom-node-petals node)
@@ -367,7 +367,7 @@ evalutes to
                    (make-message-sprout :address (process-public-address node))))))
 
 (define-message-handler handle-message-wilt
-    ((node blossom-node) (message message-wilt) now)
+    ((node blossom-node) (message message-wilt))
   ;; sanity check: are we actually allowed to wilt?
   (when (or (blossom-node-parent node)
             (blossom-node-pistil node)
@@ -443,11 +443,11 @@ evalutes to
 ;;; basic command definitions for BLOSSOM-NODE
 ;;;
 
-(define-process-upkeep ((node blossom-node) now) (START)
+(define-process-upkeep ((node blossom-node)) (START)
   "Blossom nodes represent (contracted subgraphs of) vertex(es).  The START command drops the blossom node into an infinite loop, SCAN-LOOP, which enacts the basic behavior."
   (process-continuation node `(SCAN-LOOP)))
 
-(define-process-upkeep ((node blossom-node) now) (SCAN-LOOP &optional repeat?)
+(define-process-upkeep ((node blossom-node)) (SCAN-LOOP &optional repeat?)
   "If we're out of things to do & unmatched, consider starting a SCAN.  If REPEAT? is set, then this is  _not_ our first time trying to SCAN to find something to do, and the previous attempt(s) resulted in no action."
   (unless (blossom-node-wilting node)
     (process-continuation node `(SCAN-LOOP))
@@ -466,7 +466,7 @@ evalutes to
                          :repeat? repeat?)))
       (process-continuation node `(START-SCAN ,scan-message)))))
 
-(define-process-upkeep ((node blossom-node) now) (IDLE)
+(define-process-upkeep ((node blossom-node)) (IDLE)
   (unless (blossom-node-wilting node)
     (process-continuation node `(IDLE))
     (wake-on-network)))

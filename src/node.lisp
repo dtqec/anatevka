@@ -456,6 +456,9 @@ evalutes to
               (blossom-node-pistil node)
               (blossom-node-match-edge node)
               (blossom-node-paused? node))
+      ;; in this situation, we're not currently able to make progress (because we're
+      ;; not able to act on our own).  fall asleep until some other actor picks us up
+      ;; as a passive participant in whatever action it is performing.
       (wake-on-network)
       (finish-handler))
     ;; doing this manual command injection rather than sending a message is a

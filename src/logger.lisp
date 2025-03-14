@@ -115,3 +115,22 @@
                        (eql 'SEND-EXPAND (getf entry ':command)))
                   (eql 'DRYAD-SENDING-EXPAND (getf entry ':entry-type))))
          (push entry entries))))))
+
+
+(defun logs-for-address (log address)
+  "Trims log messages to only ones related to SUPERVISOR actions involving `ADDRESS'."
+  (let (entries
+        relevant-supervisors)
+    (dolist (entry (reverse (logger-entries log)) (reverse entries))
+      (cond
+        ((and (eql 'SUPERVISOR (getf entry ':source-type))
+              (eql 'GOT-RECOMMENDATION (getf entry ':entry-type))
+              (or (and (not (null (getf entry ':source-root)))
+                       (address= address (getf entry ':source-root)))
+                  (and (not (null (not (null (getf entry ':target-root)))))
+                       (address= address (getf entry ':target-root)))))
+         (push (getf entry ':source) relevant-supervisors)
+         (push entry entries))
+        ((and (eql 'SUPERVISOR (getf entry ':source-type))
+              (member (getf entry ':source) relevant-supervisors :test #'address=))
+         (push entry entries))))))

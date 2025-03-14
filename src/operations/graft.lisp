@@ -26,7 +26,7 @@
 ;;; supervisor command definitions
 ;;;
 
-(define-process-upkeep ((supervisor supervisor) now) (START-GRAFT pong)
+(define-process-upkeep ((supervisor supervisor)) (START-GRAFT pong)
   "Set up the checks for the graft procedure."
   (with-slots (source-root edges) pong
     ;; set up script
@@ -47,7 +47,7 @@
                    (address= negative-child
                              (blossom-edge-target-node parent-neg-edge)))
         (setf (process-lockable-aborting? supervisor) t)
-        (finish-with-scheduling))
+        (finish-handler))
       (process-continuation supervisor
                             `(BROADCAST-LOCK ,targets)
                             `(CHECK-ROOTS (,source-root))
@@ -56,7 +56,7 @@
                             `(INNER-GRAFT ,pong)
                             `(BROADCAST-UNLOCK)))))
 
-(define-process-upkeep ((supervisor supervisor) now) (INNER-GRAFT pong)
+(define-process-upkeep ((supervisor supervisor)) (INNER-GRAFT pong)
   "Actually perform the graft procedure."
   (unless (process-lockable-aborting? supervisor)
     (with-slots (source-root edges) pong
@@ -82,7 +82,7 @@
                               `(INSTALL-POSITIVITY ,negative-child ,nil)
                               `(INSTALL-POSITIVITY ,positive-child ,t))))))
 
-(define-process-upkeep ((supervisor supervisor) now)
+(define-process-upkeep ((supervisor supervisor))
     (INSTALL-PARENT target edge)
   "Sets a target's parent."
   (unless (process-lockable-aborting? supervisor)
@@ -90,7 +90,7 @@
         (set-result target)
       nil)))
 
-(define-process-upkeep ((supervisor supervisor) now)
+(define-process-upkeep ((supervisor supervisor))
     (INSTALL-CHILD target edge)
   "Appends a child to a target."
   (unless (process-lockable-aborting? supervisor)
@@ -98,7 +98,7 @@
         (push-result target)
       nil)))
 
-(define-process-upkeep ((supervisor supervisor) now)
+(define-process-upkeep ((supervisor supervisor))
     (INSTALL-POSITIVITY target positive?)
   "Sets a target's POSITIVE? field."
   (unless (process-lockable-aborting? supervisor)

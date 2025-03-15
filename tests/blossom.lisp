@@ -233,15 +233,12 @@ NOTE: This macro automatically rescales the pairs in `COORDINATES' to reside at 
                                          :timeout ,timeout
                                          :timestep ,timestep)
                        (push time times)
-                       (unless matching
-                         (error "No matching produced."))
-                       (unless (perfect-matching? matching ',coordinates)
-                         (error "Found an imperfect matching: ~A" matching))
-                       (when (< (matching-weight matching) ,solution-weight)
-                         (error "Found better perfect matching: ~A has weight ~A<~A"
-                                matching
-                                (matching-weight matching)
-                                ,solution-weight))
+                       (assert matching () "No matching produced.")
+                       (assert (perfect-matching? matching ',coordinates) ()
+                               "Found an imperfect matching: ~A" matching)
+                       (assert (= (matching-weight matching) ,solution-weight) ()
+                               "Found perfect matching w/ weight ~A != ~A (expected)."
+                               (matching-weight matching) ,solution-weight)
                        (when ,solutions-provided?
                          (unless (one-of matching
                                          ,@(loop :for correct-matching :in solutions

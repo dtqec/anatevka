@@ -26,4 +26,5 @@
                              (:file "contract")
                              (:file "multireweight")
                              (:file "reweight")))
-               (:file "blossom")))
+               (:file "blossom")
+               (:file "cases")))

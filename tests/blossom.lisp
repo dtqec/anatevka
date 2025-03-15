@@ -181,7 +181,8 @@
                                      (iterations +default-iterations+)
                                      (timeout +default-timeout+)
                                      (timestep +default-timestep+)
-                                     (dryad-class 'dryad)) &body body)
+                                     (dryad-class 'dryad)
+                                     (solution-weight nil)) &body body)
   "Used to define a blossom algorithm unit test named `TEST-NAME'. The LIST of `COORDINATES' represents the problem graph to be fed to the blossom algorithm.
 
 There are also a collection of optional keyword arguments that allow individual tests to be customized. The `DEBUG?' and `DRYAD-CLOCK-RATE' parameters set the process debug flag and the process clock rate, respectively, of the DRYAD in the algorithm. The `ITERATIONS' parameter determines how many times the test will be run. The `BORDER' parameter offsets the coordinates. The `TIMEOUT' parameter determines how long the test can run before it is considered a failure. The `TIMESTEP' parameter designates how many clock cycles to run between each RECEIVE-MESSAGE call. The `DRYAD-CLASS' parameter allows this test suite to be used with different types of dryads.
@@ -191,10 +192,20 @@ Finally, the `BODY' contains optional declarations and a docstring, and then is 
 NOTE: This macro automatically rescales the pairs in `COORDINATES' to reside at measurement qubit locations in a suitably large instance of the surface code."
   (multiple-value-bind (solutions decls docstring)
       (alexandria:parse-body body :documentation t)
-    (assert (apply #'= (mapcar #'matching-weight solutions))
+    (unless (null (first solutions))
+      (assert (apply #'= (mapcar #'matching-weight solutions))
+              ()
+              "Solutions differ in weight.")
+      (when solution-weight
+        (assert (= solution-weight (matching-weight (first solutions)))
+                ()
+                "Provided solutions have weight ~a but :solution-weight is ~a."
+                (matching-weight (first solutions)) solution-weight)))
+    (assert (or (first solutions) solution-weight)
             ()
-            "Solutions differ in weight.")
-    (let ((solution-weight (matching-weight (first solutions))))
+            "Must provide at least one solution or a :solution-weight.")
+    (let ((solution-weight (or solution-weight (matching-weight (first solutions))))
+          (solutions-provided? (not (null (first solutions)))))
       `(deftest ,test-name ()
          ,@(when docstring (list docstring))
          ,@(when decls decls)
@@ -224,18 +235,19 @@ NOTE: This macro automatically rescales the pairs in `COORDINATES' to reside at 
                        (push time times)
                        (unless matching
                          (error "No matching produced."))
-                       (unless (one-of matching
-                                       ,@(loop :for correct-matching :in solutions
-                                               :collect `',correct-matching))
-                         (unless (perfect-matching? matching ',coordinates)
-                           (error "Found an imperfect matching: ~A" matching))
-                         (when (< (matching-weight matching) ,solution-weight)
-                           (error "Found better perfect matching: ~A has weight ~A<~A"
-                                  matching
-                                  (matching-weight matching)
-                                  ,solution-weight))
-                         (format t "~%Found perfect matching not in solutions: ~A~%"
-                                 matching))
+                       (unless (perfect-matching? matching ',coordinates)
+                         (error "Found an imperfect matching: ~A" matching))
+                       (when (< (matching-weight matching) ,solution-weight)
+                         (error "Found better perfect matching: ~A has weight ~A<~A"
+                                matching
+                                (matching-weight matching)
+                                ,solution-weight))
+                       (when ,solutions-provided?
+                         (unless (one-of matching
+                                         ,@(loop :for correct-matching :in solutions
+                                                 :collect `',correct-matching))
+                           (format t "~%Found perfect matching not in solutions: ~A~%"
+                                   matching)))
                        (is (= ,solution-weight (matching-weight matching)))))))
            :finally
               ;; print out run-time statistics

@@ -1,0 +1,23 @@
+[project]
+name = "anatevka-tests"
+version = "0.1.0"
+description = "For generating anatevka test cases."
+authors = [
+    {name = "Peter Karalekas",email = "peter@karalekas.com"}
+]
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "networkx (>=3.4.2,<4.0.0)",
+    "matplotlib (>=3.10.1,<4.0.0)"
+]
+
+[tool.poetry]
+package-mode = false
+
+[tool.poetry.group.dev.dependencies]
+jupyterlab = "^4.3.6"
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"

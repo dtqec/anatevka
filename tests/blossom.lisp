@@ -55,11 +55,12 @@
   "Given INTEGER coordinates `X' and `Y', apply an INTEGER `OFFSET' to `X', and then shift them to the 'surface code coordinate system' of the surface code. In the surface code, each flavor of stabilizer occupies its own lattice (thus we will only care about one of the two for the blossom algorithm). One such lattice has 'origin' at (1, 0), and every other stabilizer is 2 units away in the x or y direction."
   (list (1+ (* 2 (+ x offset))) (* 2 y)))
 
-(defgeneric sow-spacelike-graph (dryad coordinates &key offset)
+(defgeneric sow-spacelike-graph (dryad coordinates &key offset &allow-other-keys)
   (:documentation "Given a LIST of spacelike `COORDINATES', sow them into the `DRYAD'. Before sowing, apply the INTEGER `OFFSET' and shift the coordinates to the surface code coordinate system using `SHIFT-COORDINATES'."))
 
 (defmethod sow-spacelike-graph ((dryad dryad) coordinates
-                                &key (offset (error "Must provide offset.")))
+                                &key (offset (error "Must provide offset."))
+                                     &allow-other-keys)
   (loop :for (x y) :in coordinates
         ;; apply offset and shift to 'lattice coordinate system'
         :for (shifted-x shifted-y) := (shift-coordinates x y offset)
@@ -175,14 +176,17 @@
                   :collect (equal sorted-matching sorted-correct-matching))))
 
 (defmacro define-blossom-test (test-name coordinates
-                               (&key (border +default-border+)
+                               (&rest all-keys
+                                &key (border +default-border+)
                                      (debug? nil)
                                      (dryad-clock-rate +default-dryad-clock-rate+)
                                      (iterations +default-iterations+)
                                      (timeout +default-timeout+)
                                      (timestep +default-timestep+)
-                                     (dryad-class 'dryad)
-                                     (solution-weight nil)) &body body)
+                                     (solution-weight nil)
+                                     (dryad-class ''dryad)
+                                &allow-other-keys)
+                               &body body)
   "Used to define a blossom algorithm unit test named `TEST-NAME'. The LIST of `COORDINATES' represents the problem graph to be fed to the blossom algorithm.
 
 There are also a collection of optional keyword arguments that allow individual tests to be customized. The `DEBUG?' and `DRYAD-CLOCK-RATE' parameters set the process debug flag and the process clock rate, respectively, of the DRYAD in the algorithm. The `ITERATIONS' parameter determines how many times the test will be run. The `BORDER' parameter offsets the coordinates. The `TIMEOUT' parameter determines how long the test can run before it is considered a failure. The `TIMESTEP' parameter designates how many clock cycles to run between each RECEIVE-MESSAGE call. The `DRYAD-CLASS' parameter allows this test suite to be used with different types of dryads.
@@ -214,7 +218,7 @@ NOTE: This macro automatically rescales the pairs in `COORDINATES' to reside at 
            :with times
            :do (with-courier ()
                  (let* ((channel (register))
-                        (dryad (spawn-process ',dryad-class
+                        (dryad (spawn-process ,dryad-class
                                               :process-clock-rate ,dryad-clock-rate
                                               :match-address channel
                                               :debug? ,debug?
@@ -225,7 +229,8 @@ NOTE: This macro automatically rescales the pairs in `COORDINATES' to reside at 
                      (when (= 0 (mod i 50))
                        (trivial-garbage:gc :full t))
                      (sow-spacelike-graph dryad ',coordinates
-                                          :offset ,border)
+                                          :offset ,border
+                                          ,@all-keys)
                      (multiple-value-bind (matching time)
                          (await-matching simulation channel
                                          :coordinates ',coordinates
@@ -254,6 +259,7 @@ NOTE: This macro automatically rescales the pairs in `COORDINATES' to reside at 
                       (alexandria:standard-deviation times)
                       (reduce #'min times)
                       (reduce #'max times)))))))
+
 
 (define-blossom-test test-blossom-bulk-pair ((0 0) (0 1))
     (:border 1)

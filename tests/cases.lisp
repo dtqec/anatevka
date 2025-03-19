@@ -58,7 +58,7 @@
              `(define-blossom-test ,test-name ,nodes
                   (:border ,border :debug? ,debug? :dryad-clock-rate ,dryad-clock-rate
                    :iterations ,iterations :timeout ,timeout :timestep ,timestep
-                   :dryad-class ,dryad-class :solution-weight ,mwpm-value)
+                   :dryad-class ',dryad-class :solution-weight ,mwpm-value)
                 ()))))
 
 (define-blossom-suite "10" ()) ; 10x10 grid tests

@@ -1,4 +1,4 @@
-;;;; matchmaker.lisp
+;;;; node.lisp
 ;;;;
 ;;;; This implements the fundamental computational actor in a distributed
 ;;;; modification of Edmonds's minimum-weight perfect matching algorithm.

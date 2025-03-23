@@ -7,13 +7,13 @@
 
 (eval-when (:compile-toplevel :load-toplevel :execute) ; needed at compile-time
 
-  (defun test-case-directory-filepath (dirname)
+  (defun test-case-directory-filepath (dirname system-name)
     "Return the absolute pathname for `DIRNAME', which is the name of a test case directory in the `tests/py/cases'."
     (declare (string dirname))
-    (let* ((anatevka-dir (ql:where-is-system "anatevka-tests")))
+    (let* ((system-dir (ql:where-is-system system-name)))
       (merge-pathnames (concatenate 'string "tests/py/cases/" dirname "/*.*")
-                       anatevka-dir)))
-  
+                       system-dir)))
+
   (defun parse-test-case-file (filename)
     "Parses a test case file and extracts the MWPM value and the list of nodes."
     (with-open-file (stream filename :direction :input)
@@ -26,20 +26,20 @@
                    (push (list x y) nodes)))
         (values mwpm-value (reverse nodes)))))
 
-  (defun process-test-case-directory (dirname)
+  (defun process-test-case-directory (dirname system-name parser-fn)
     "Iterates through all files in test case directory named `DIRNAME' and parses them."
-    (let* ((dirpath (test-case-directory-filepath dirname))
+    (let* ((dirpath (test-case-directory-filepath dirname system-name))
            (files (directory dirpath)))
       (loop :for file :in files
-            :collect (list file (multiple-value-list (parse-test-case-file file)))
+            :collect (list file (multiple-value-list (funcall parser-fn file)))
               :into test-cases
             :finally (return test-cases))))
 
-  (defun sanitize-test-name (dirname test-path)
+  (defun sanitize-test-name (dirname test-path suite-name package-keyword)
     "Generates a valid Lisp symbol for a test name based on directory and file name."
     (let* ((test-name (pathname-name test-path))
-           (clean-name (format nil "test-blossom-suite-~A-~A" dirname test-name)))
-      (intern (string-upcase (substitute #\- #\/ clean-name)) :anatevka-tests))))
+           (clean-name (format nil "test-~A-suite-~A-~A" suite-name dirname test-name)))
+      (intern (string-upcase (substitute #\- #\/ clean-name)) package-keyword))))
 
 (defmacro define-blossom-suite (dirname
                                 (&key (border +default-border+)
@@ -52,8 +52,13 @@
   "Creates a suite of `DEFINE-BLOSSOM-TEST's by processing the test case files at `DIRNAME' and asserting that we produce the correct minimum-weight perfect matching (MWPM). The `DIRNAME' is a number n specifying a directory containing test cases of random complete graphs laid out on an nxn grid. The test names produced by `DEFINE-BLOSSOM-SUITE' are of the form `TEST-BLOSSOM-SUITE-n-p-i' where p is the 'node density' (i.e. what proportion of the grid locations have a node at them) and i is the test case number."
   `(progn
      ,@(loop :for (test-path (mwpm-value nodes))
-               :in (process-test-case-directory dirname)
-             :for test-name := (sanitize-test-name dirname test-path)
+               :in (process-test-case-directory dirname
+                                                "anatevka-tests"
+                                                #'parse-test-case-file)
+             :for test-name := (sanitize-test-name dirname
+                                                   test-path
+                                                   "blossom"
+                                                   :anatevka-tests)
              :collect
              `(define-blossom-test ,test-name ,nodes
                   (:border ,border :debug? ,debug? :dryad-clock-rate ,dryad-clock-rate

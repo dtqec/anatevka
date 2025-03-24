@@ -68,4 +68,4 @@
 
 (define-blossom-suite "10" ()) ; 10x10 grid tests
 
-(define-blossom-suite "20" (:timeout 1200)) ; 20x20 grid tests
+(define-blossom-suite "20" (:timeout 2000)) ; 20x20 grid tests

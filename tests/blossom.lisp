@@ -228,9 +228,9 @@ NOTE: This macro automatically rescales the pairs in `COORDINATES' to reside at 
                      (anatevka::reset-logger)
                      (when (= 0 (mod i 50))
                        (trivial-garbage:gc :full t))
-                     (sow-spacelike-graph dryad ',coordinates
-                                          :offset ,border
-                                          ,@all-keys)
+                     (sow-graph dryad ',coordinates
+                                :offset ,border
+                                ,@all-keys)
                      (multiple-value-bind (matching time)
                          (await-matching simulation channel
                                          :coordinates ',coordinates

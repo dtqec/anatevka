@@ -76,8 +76,9 @@ Having established the class which carries the graph definition, we wrap a solve
                              :debug? t
                              :match-address match-address)))
   ;; Set up the core simulation components: the network host and the dryad.
-  (simulation-add-event simulation
-                        (make-event :callback *local-courier* :time 0))
+  (with-active-simulation simulation
+    (simulation-add-event simulation
+                          (make-event :callback *local-courier* :time 0)))
   (simulation-add-event simulation (make-event :callback dryad :time 0))
   ;; Prime the dryad with messages to spawn workers for the eight vertices.
   (loop :for j :from 1 :to 8

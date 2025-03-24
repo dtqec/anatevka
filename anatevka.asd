@@ -8,7 +8,7 @@
   :version (:read-file-form "VERSION.txt")
   :pathname "src/"
   :depends-on (#:alexandria
-               (:version #:aether "1.1.0")
+               (:version #:aether "1.2.0")
                )
   :in-order-to ((asdf:test-op (asdf:test-op #:anatevka-tests)))
   :around-compile (lambda (compile)

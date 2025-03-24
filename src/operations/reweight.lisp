@@ -57,7 +57,7 @@
 ;;; supervisor command definitions
 ;;;
 
-(define-process-upkeep ((supervisor supervisor) now) (START-REWEIGHT pong)
+(define-process-upkeep ((supervisor supervisor)) (START-REWEIGHT pong)
   "Sets up the reweight procedure.
 
 1. Lock the targets.
@@ -92,7 +92,7 @@
                             `(BROADCAST-UNLOCK)
                             `(HALT)))))
 
-(define-process-upkeep ((supervisor supervisor) now) (CHECK-REWEIGHT pong)
+(define-process-upkeep ((supervisor supervisor)) (CHECK-REWEIGHT pong)
   "Because `CHECK-PONG' doesn't do a global check, we potentially can end up with a reweighting when we shouldn't. This fixes that by making sure that there are no lower-weight recommendations available before we begin reweighting."
   (unless (process-lockable-aborting? supervisor)
     (with-slots (source-root weight) pong
@@ -108,7 +108,7 @@
            (when (< (message-pong-weight pong-message) weight)
              (setf (process-lockable-aborting? supervisor) t))))))))
 
-(define-process-upkeep ((supervisor supervisor) now)
+(define-process-upkeep ((supervisor supervisor))
     (BROADCAST-REWEIGHT roots weight)
   "Instruct some `ROOTS' to reweight their trees by `WEIGHT'."
   (unless (process-lockable-aborting? supervisor)
@@ -117,7 +117,7 @@
       (with-replies (replies) (send-message-batch #'payload-constructor roots)
         nil))))
 
-(define-process-upkeep ((supervisor supervisor) now)
+(define-process-upkeep ((supervisor supervisor))
     (CHECK-REWINDING roots original-pong carry)
   "Instruct a set of `ROOTS' to ensure that their reweighting has not resulted in an erroneous global state. If they have, then we want to rewind the reweighting, by using the `BROADCAST-REWEIGHT' command."
   (unless (process-lockable-aborting? supervisor)
@@ -201,7 +201,7 @@
 ;;;
 
 (define-broadcast-handler handle-message-broadcast-reweight
-    ((node blossom-node) (message message-broadcast-reweight) now)
+    ((node blossom-node) (message message-broadcast-reweight))
   "Increments the `INTERNAL-WEIGHT' of `NODE' by the `WEIGHT' of the `MESSAGE', and then instructs `NODE's children to reweight themselves by the additive inverse of `WEIGHT'."
   (with-slots (weight) message
     (with-slots (internal-weight) node

@@ -8,14 +8,14 @@
 (eval-when (:compile-toplevel :load-toplevel :execute) ; needed at compile-time
 
   (defun test-case-directory-filepath (dirname system-name)
-    "Return the absolute pathname for `DIRNAME', which is the name of a test case directory in the `tests/py/cases'."
+    "Return the absolute pathname for `DIRNAME', which is the name of a test case directory in the `tests/py/cases' subdirectory of the repository for `SYSTEM-NAME'."
     (declare (string dirname))
     (let* ((system-dir (ql:where-is-system system-name)))
       (merge-pathnames (concatenate 'string "tests/py/cases/" dirname "/*.*")
                        system-dir)))
 
   (defun parse-test-case-file (filename)
-    "Parses a test case file and extracts the MWPM value and the list of nodes."
+    "Parses a test case file at `FILENAME' to extract the MWPM value and list of nodes."
     (with-open-file (stream filename :direction :input)
       (let ((mwpm-value (parse-integer (read-line stream))) ; read first line for mwpm
             (nodes '()))
@@ -27,7 +27,7 @@
         (values mwpm-value (reverse nodes)))))
 
   (defun process-test-case-directory (dirname system-name parser-fn)
-    "Iterates through all files in test case directory named `DIRNAME' and parses them."
+    "Iterates through all files in test case directory named `DIRNAME' and parses them using the provided function `PARSER-FN'."
     (let* ((dirpath (test-case-directory-filepath dirname system-name))
            (files (directory dirpath)))
       (loop :for file :in files
@@ -36,7 +36,7 @@
             :finally (return test-cases))))
 
   (defun sanitize-test-name (dirname test-path suite-name package-keyword)
-    "Generates a valid Lisp symbol for a test name based on directory and file name."
+    "Generates a valid Lisp symbol for a test name based on directory `DIRNAME', file name `TEST-PATH', and test suite name `SUITE-NAME', and then interns it in the package specified by `PACKAGE-KEYWORD'."
     (let* ((test-name (pathname-name test-path))
            (clean-name (format nil "test-~A-suite-~A-~A" suite-name dirname test-name)))
       (intern (string-upcase (substitute #\- #\/ clean-name)) package-keyword))))

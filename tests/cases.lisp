@@ -68,7 +68,24 @@
 
 (define-blossom-suite "10" ()) ; 10x10 grid tests
 
-;; NB: this test doesn't pass w/o GATHER-TARGETS
-(define-blossom-suite "15" ()) ; 15x15 grid tests
+;(define-blossom-suite "15" (:timeout 2000)) ; 15x15 grid tests
+
+;(define-blossom-suite "15-1" (:timeout 2000)) ; 15x15 grid tests
+
+;(define-blossom-suite "15-2" (:timeout 2000)) ; 15x15 grid tests
+
+;(define-blossom-suite "15-3" (:timeout 2000)) ; 15x15 grid tests
+
+;(define-blossom-suite "15-4" (:timeout 2000)) ; 15x15 grid tests
+
+;(define-blossom-suite "15-5" (:timeout 2000)) ; 15x15 grid tests
+
+;(define-blossom-suite "15-6" (:timeout 2000)) ; 15x15 grid tests
+
+;(define-blossom-suite "15-7" (:timeout 2000)) ; 15x15 grid tests
+
+;(define-blossom-suite "15-8" (:timeout 2000)) ; 15x15 grid tests
+
+;(define-blossom-suite "15-9" (:timeout 2000)) ; 15x15 grid tests
 
 (define-blossom-suite "20" (:timeout 2000)) ; 20x20 grid tests

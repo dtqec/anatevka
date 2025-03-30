@@ -958,11 +958,12 @@ it declines to take action because C has priority.
             (is (tree-equalp original-tree target-tree))))))))
 
 ;;;
-;;; multi-cluster tests
+;;; multi-cluster tests (internal pong is internal)
 ;;;
 
 ;; NB: this test is in main as-is, and should fail after the changes
 ;;     (post-changes one cluster should reweight by 2)
+;;     NVM these stay the same because the internal pong is internal
 (deftest test-supervisor-multireweight-simultaneous-rewind-halfway ()
   "Checks the transformation
 
@@ -1284,22 +1285,21 @@ The point of this is to show that simultaneous reweighting and rewinding during 
                          :parent (vv-edge B A)))
             (is (tree-equalp original-tree target-tree))))))))
 
+;;;
+;;; multi-cluster tests (internal-pong is external)
+
 ;; NB: this is a new test, and should fail after the changes
 ;;     (post-changes one cluster should reweight by 1)
 (deftest test-supervisor-multireweight-2-clusters ()
   "Checks the transformation
 
-                                                       3  5  3
-                                                       /  /  /
- 0  2  0              0  2  0     0  0  0              4  4  4
+ 0  2  0              0  2  0     0  0  0              1  1  1
  +  -  +              +  -  +     +  -  +              +  -  +
  A->B=>C              L<=M<-N     A->B=>C              L<=M<-N
                               -->
     D->E=>F  G<=H<-I<=J<-K           D->E=>F  G<=H<-I<=J<-K
     +  -  +  +  -  +  -  +           +  -  +  +  -  +  -  +
-    0  2  0  0  2  0  2  0           0  0  0  3  5  3  5  3
-                                              /  /  /  /  /
-                                              4  4  4  4  4
+    0  2  0  0  2  0  2  0           0  0  0  1  1  1  1  1
 
 d(B, D), d(J, L) = 2 and d(F, G) = 1
 "
@@ -1424,41 +1424,41 @@ d(B, D), d(J, L) = 2 and d(F, G) = 1
                   :match-edge (vv-edge F E)
                   :parent (vv-edge F E))
                (G :id (id 7 0)
-                  :internal-weight 3/4
+                  :internal-weight 1
                   :match-edge (vv-edge G H)
                   :parent (vv-edge G H))
                (H :id (id 9 0)
                   :children (list (vv-edge H G))
-                  :internal-weight 5/4
+                  :internal-weight 1
                   :match-edge (vv-edge H G)
                   :parent (vv-edge H I)
                   :positive? nil)
                (I :id (id 11 0)
-                  :internal-weight 3/4
+                  :internal-weight 1
                   :children (list (vv-edge I H))
                   :match-edge (vv-edge I J)
                   :parent (vv-edge I J))
                (J :id (id 13 0)
-                  :internal-weight 5/4
+                  :internal-weight 1
                   :children (list (vv-edge J I))
                   :match-edge (vv-edge J I)
                   :parent (vv-edge J K)
                   :positive? nil)
                (K :id (id 15 0)
-                  :internal-weight 3/4
+                  :internal-weight 1
                   :children (list (vv-edge K J)))
                (L :id (id 13 2)
-                  :internal-weight 3/4
+                  :internal-weight 1
                   :match-edge (vv-edge L M)
                   :parent (vv-edge L M))
                (M :id (id 15 2)
                   :children (list (vv-edge M L))
-                  :internal-weight 5/4
+                  :internal-weight 1
                   :match-edge (vv-edge M L)
                   :parent (vv-edge M N)
                   :positive? nil)
                (N :id (id 17 2)
-                  :internal-weight 3/4
+                  :internal-weight 1
                   :children (list (vv-edge N M))))
             (is (tree-equalp original-tree target-tree))))))))
 
@@ -1475,7 +1475,7 @@ d(B, D), d(J, L) = 2 and d(F, G) = 1
     +  -  +  +  -  +         +  -  +
     0  2  0  0  2  0         0  2  0
 
-d(B, D), d(H, J), d(N, P) = 2 and d(F, G) = 1 and d(L, M) = 2
+d(B, D), d(H, J), d(N, P) = 2 and d(F, G), d(L, M) = 1
 "
   (with-with ((with-courier ())
               (with-simulation (simulation (*local-courier*)))
@@ -1534,29 +1534,29 @@ d(B, D), d(H, J), d(N, P) = 2 and d(F, G) = 1 and d(L, M) = 2
            (L :id (id 13 2)
               :children (list (vv-edge L K))
               :held-by-roots (list I))
-           (M :id (id 15 2)
+           (M :id (id 14 2)
               :children (list (vv-edge M N))
               :held-by-roots (list P)
               :paused? T)
-           (N :id (id 17 2)
+           (N :id (id 16 2)
               :children (list (vv-edge N O))
               :internal-weight 2
               :match-edge (vv-edge N O)
               :parent (vv-edge N M)
               :positive? nil)
-           (O :id (id 19 2)
+           (O :id (id 18 2)
               :match-edge (vv-edge O N)
               :parent (vv-edge O N))
-           (P :id (id 17 0)
+           (P :id (id 16 0)
               :children (list (vv-edge P Q))
               :held-by-roots (list M))
-           (Q :id (id 19 0)
+           (Q :id (id 18 0)
               :children (list (vv-edge Q R))
               :internal-weight 2
               :match-edge (vv-edge Q R)
               :parent (vv-edge Q P)
               :positive? nil)
-           (R :id (id 21 0)
+           (R :id (id 20 0)
               :match-edge (vv-edge R Q)
               :parent (vv-edge R Q)))
         (let ((supervisor-A (supervisor simulation
@@ -1568,7 +1568,7 @@ d(B, D), d(H, J), d(N, P) = 2 and d(F, G) = 1 and d(L, M) = 2
                                         :source-id (slot-value B 'anatevka::id)
                                         :root-bucket (list
                                                       (process-public-address D))))
-              (supervisor-I (supervisor simulation
+              (supervisor-I (supervisor simulation :time 1/2
                                         :recommendation ':hold
                                         :weight 0
                                         :edges (list (vv-edge I K))
@@ -1576,7 +1576,7 @@ d(B, D), d(H, J), d(N, P) = 2 and d(F, G) = 1 and d(L, M) = 2
                                         :target-root (process-public-address L)
                                         :source-id (slot-value I 'anatevka::id)
                                         :root-bucket (list (process-public-address L))))
-              (supervisor-M (supervisor simulation
+              (supervisor-M (supervisor simulation :time 1
                                         :recommendation ':hold
                                         :weight 0
                                         :edges (list (vv-edge N P))
@@ -1601,89 +1601,90 @@ d(B, D), d(H, J), d(N, P) = 2 and d(F, G) = 1 and d(L, M) = 2
           (simulate-until-dead simulation supervisor-M)
           (blossom-let (target-tree :dryad dryad-address)
               ((A :id (id 0 2)
-                  :internal-weight 1/2
+                  :internal-weight 1
                   :children (list (vv-edge A B)))
                (B :id (id 2 2)
                   :children (list (vv-edge B C))
-                  :internal-weight 3/2
+                  :internal-weight 1
                   :match-edge (vv-edge B C)
                   :parent (vv-edge B A)
                   :positive? nil)
                (C :id (id 4 2)
-                  :internal-weight 1/2
+                  :internal-weight 1
                   :match-edge (vv-edge C B)
                   :parent (vv-edge C B))
                (D :id (id 2 0)
-                  :internal-weight 1/2
+                  :internal-weight 1
                   :children (list (vv-edge D E)))
                (E :id (id 4 0)
                   :children (list (vv-edge E F))
-                  :internal-weight 3/2
+                  :internal-weight 1
                   :match-edge (vv-edge E F)
                   :parent (vv-edge E D)
                   :positive? nil)
                (F :id (id 6 0)
-                  :internal-weight 1/2
+                  :internal-weight 1
                   :match-edge (vv-edge F E)
                   :parent (vv-edge F E))
                (G :id (id 7 0)
-                  :internal-weight 1/2
+                  :internal-weight 0
                   :match-edge (vv-edge G H)
                   :parent (vv-edge G H))
                (H :id (id 9 0)
                   :children (list (vv-edge H G))
-                  :internal-weight 3/2
+                  :internal-weight 2
                   :match-edge (vv-edge H G)
                   :parent (vv-edge H I)
                   :positive? nil)
                (I :id (id 11 0)
-                  :internal-weight 1/2
+                  :internal-weight 0
                   :children (list (vv-edge I H)))
                (J :id (id 9 2)
-                  :internal-weight 1/2
+                  :internal-weight 0
                   :match-edge (vv-edge J K)
                   :parent (vv-edge J K))
                (K :id (id 11 2)
                   :children (list (vv-edge K J))
-                  :internal-weight 3/2
+                  :internal-weight 2
                   :match-edge (vv-edge K J)
                   :parent (vv-edge K L)
                   :positive? nil)
                (L :id (id 13 2)
-                  :internal-weight 1/2
+                  :internal-weight 0
                   :children (list (vv-edge L K)))
-               (M :id (id 15 2)
-                  :internal-weight 3/2
+               (M :id (id 14 2)
+                  :internal-weight 1
                   :children (list (vv-edge M N)))
-               (N :id (id 17 2)
+               (N :id (id 16 2)
                   :children (list (vv-edge N O))
-                  :internal-weight 1/2
+                  :internal-weight 1
                   :match-edge (vv-edge N O)
                   :parent (vv-edge N M)
                   :positive? nil)
-               (O :id (id 19 2)
-                  :internal-weight 3/2
+               (O :id (id 18 2)
+                  :internal-weight 1
                   :match-edge (vv-edge O N)
                   :parent (vv-edge O N))
-               (P :id (id 17 0)
-                  :internal-weight 3/2
+               (P :id (id 16 0)
+                  :internal-weight 1
                   :children (list (vv-edge P Q)))
-               (Q :id (id 19 0)
+               (Q :id (id 18 0)
                   :children (list (vv-edge Q R))
-                  :internal-weight 1/2
+                  :internal-weight 1
                   :match-edge (vv-edge Q R)
                   :parent (vv-edge Q P)
                   :positive? nil)
-               (R :id (id 21 0)
-                  :internal-weight 3/2
+               (R :id (id 20 0)
+                  :internal-weight 1
                   :match-edge (vv-edge R Q)
                   :parent (vv-edge R Q)))
             (is (tree-equalp original-tree target-tree))))))))
 
-;; NB: this is a new test, and should fail after the changes
-;;     (post-changes one left cluster and one right cluster should reweight by 1)
+
 (deftest test-supervisor-multireweight-4-clusters ()
-  "Checks that this configuration will yield all 0->1/2 and all 2->3/2
+  "Checks that this configuration will result in the following:
+- one of the two clusters (A,D) and (I,L) will multireweight by 1
+- one of the two clusters (M,P) and (V,Y) will multireweight by 1
 
  0  2  0        0  2  0   0  2  0        0  2  0
  +  -  +        +  -  +   +  -  +        +  -  +
@@ -1853,107 +1854,107 @@ d(B, D), d(H, J), d(N, P), d(U, W) = 2 and d(F, G), d(R, S) = 1 and d(L, M) = 2
           (simulate-until-dead simulation supervisor-V)
           (blossom-let (target-tree :dryad dryad-address)
               ((A :id (id 0 2)
-                  :internal-weight 1/2
+                  :internal-weight 1
                   :children (list (vv-edge A B)))
                (B :id (id 2 2)
                   :children (list (vv-edge B C))
-                  :internal-weight 3/2
+                  :internal-weight 1
                   :match-edge (vv-edge B C)
                   :parent (vv-edge B A)
                   :positive? nil)
                (C :id (id 4 2)
-                  :internal-weight 1/2
+                  :internal-weight 1
                   :match-edge (vv-edge C B)
                   :parent (vv-edge C B))
                (D :id (id 2 0)
-                  :internal-weight 1/2
+                  :internal-weight 1
                   :children (list (vv-edge D E)))
                (E :id (id 4 0)
                   :children (list (vv-edge E F))
-                  :internal-weight 3/2
+                  :internal-weight 1
                   :match-edge (vv-edge E F)
                   :parent (vv-edge E D)
                   :positive? nil)
                (F :id (id 6 0)
-                  :internal-weight 1/2
+                  :internal-weight 1
                   :match-edge (vv-edge F E)
                   :parent (vv-edge F E))
                (G :id (id 7 0)
-                  :internal-weight 1/2
+                  :internal-weight 0
                   :match-edge (vv-edge G H)
                   :parent (vv-edge G H))
                (H :id (id 9 0)
                   :children (list (vv-edge H G))
-                  :internal-weight 3/2
+                  :internal-weight 2
                   :match-edge (vv-edge H G)
                   :parent (vv-edge H I)
                   :positive? nil)
                (I :id (id 11 0)
-                  :internal-weight 1/2
+                  :internal-weight 0
                   :children (list (vv-edge I H)))
                (J :id (id 9 2)
-                  :internal-weight 1/2
+                  :internal-weight 0
                   :match-edge (vv-edge J K)
                   :parent (vv-edge J K))
                (K :id (id 11 2)
                   :children (list (vv-edge K J))
-                  :internal-weight 3/2
+                  :internal-weight 2
                   :match-edge (vv-edge K J)
                   :parent (vv-edge K L)
                   :positive? nil)
                (L :id (id 13 2)
-                  :internal-weight 1/2
+                  :internal-weight 0
                   :children (list (vv-edge L K)))
                (M :id (id 15 2)
-                  :internal-weight 1/2
+                  :internal-weight 0
                   :children (list (vv-edge M N)))
                (N :id (id 17 2)
                   :children (list (vv-edge N O))
-                  :internal-weight 3/2
+                  :internal-weight 2
                   :match-edge (vv-edge N O)
                   :parent (vv-edge N M)
                   :positive? nil)
                (O :id (id 19 2)
-                  :internal-weight 1/2
+                  :internal-weight 0
                   :match-edge (vv-edge O N)
                   :parent (vv-edge O N))
                (P :id (id 17 0)
-                  :internal-weight 1/2
+                  :internal-weight 0
                   :children (list (vv-edge P Q)))
                (Q :id (id 19 0)
                   :children (list (vv-edge Q R))
-                  :internal-weight 3/2
+                  :internal-weight 2
                   :match-edge (vv-edge Q R)
                   :parent (vv-edge Q P)
                   :positive? nil)
                (R :id (id 21 0)
-                  :internal-weight 1/2
+                  :internal-weight 0
                   :match-edge (vv-edge R Q)
                   :parent (vv-edge R Q))
                (S :id (id 22 0)
-                  :internal-weight 1/2
+                  :internal-weight 1
                   :match-edge (vv-edge S U)
                   :parent (vv-edge S U))
                (U :id (id 24 0)
                   :children (list (vv-edge U S))
-                  :internal-weight 3/2
+                  :internal-weight 1
                   :match-edge (vv-edge U S)
                   :parent (vv-edge U V)
                   :positive? nil)
                (V :id (id 26 0)
-                  :internal-weight 1/2
+                  :internal-weight 1
                   :children (list (vv-edge V U)))
                (W :id (id 24 2)
-                  :internal-weight 1/2
+                  :internal-weight 1
                   :match-edge (vv-edge W X)
                   :parent (vv-edge W X))
                (X :id (id 26 2)
                   :children (list (vv-edge X W))
-                  :internal-weight 3/2
+                  :internal-weight 1
                   :match-edge (vv-edge X W)
                   :parent (vv-edge X Y)
                   :positive? nil)
                (Y :id (id 28 2)
-                  :internal-weight 1/2
+                  :internal-weight 1
                   :children (list (vv-edge Y X))))
             (is (tree-equalp original-tree target-tree))))))))

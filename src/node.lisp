@@ -262,6 +262,13 @@ evalutes to
   (slot  nil :type symbol)
   (value nil :type t))
 
+;; TODO: probably just delete this, I don't think it's needed anymore
+(defstruct (message-change (:include message))
+  "Causes a remote SETF (on the BLOSSOM-NODE object) iff the provided VALUE differs from the value stored in SLOT for that object. Uses TEST to determine equality."
+  (slot  nil :type symbol)
+  (value nil :type t)
+  (test #'eq :type function))
+
 (defstruct (message-values (:include message))
   "Replies with slot-values (on the BLOSSOM-NODE object)."
   (values nil :type list))
@@ -340,6 +347,15 @@ evalutes to
     (push value (slot-value node slot))
     (values)))
 
+(define-rpc-handler handle-message-change
+    ((node blossom-node) (message message-change))
+  "Handles a remote change request."
+  (with-slots (slot value test) message
+    (let ((same? (funcall test (slot-value node slot) value)))
+      (unless same?
+        (setf (slot-value node slot) value))
+      same?)))
+
 (define-rpc-handler handle-message-values
     ((node blossom-node) (message message-values))
   "Handles a remote request for data."
@@ -413,6 +429,7 @@ evalutes to
   
   (message-set                        'handle-message-set)
   (message-push                       'handle-message-push)
+  (message-change                     'handle-message-change)
   (message-values                     'handle-message-values)
   
   (message-root-path                  'handle-message-root-path)

@@ -105,16 +105,7 @@ Then, we reach the \"critical segment\", where it becomes impossible to rewind p
           ;; otherwise, push the next set of commands onto the stack
           (process-continuation supervisor
                                 `(CHECK-PRIORITY ,source-root ,hold-cluster)
-                                #+i`(PAUSE-CLUSTER ,source-root ,hold-cluster)
-                                `(MULTIREWEIGHT-BROADCAST-SCAN ,hold-cluster)
-                                #+i`(BROADCAST-LOCK ,hold-cluster)
-                                #+i`(CHECK-ROOTS ,hold-cluster)
-                                #+i`(BROADCAST-PINGABILITY ,hold-cluster :SOFT)
-                                #+i`(BROADCAST-PINGABILITY ,hold-cluster :NONE)
-                                #+i`(MULTIREWEIGHT-BROADCAST-REWEIGHT ,hold-cluster)
-                                #+i`(BROADCAST-PINGABILITY ,hold-cluster :SOFT)
-                                #+i`(MULTIREWEIGHT-CHECK-REWINDING ,hold-cluster)
-                                #+i`(BROADCAST-UNLOCK)))))))
+                                `(MULTIREWEIGHT-BROADCAST-SCAN ,hold-cluster)))))))
 
 (define-process-upkeep ((supervisor supervisor))
     (CHECK-PRIORITY source-root target-roots)
@@ -132,23 +123,6 @@ Then, we reach the \"critical segment\", where it becomes impossible to rewind p
                        :hold-cluster hold-cluster)
             (setf (process-lockable-aborting? supervisor) t)))))))
 
-#+i(define-process-upkeep ((supervisor supervisor))
-    (PAUSE-CLUSTER source-root target-roots)
-  "Set paused? to T for all roots in the hold cluster (`TARGET-ROOTS' - `SOURCE-ROOT'), iff they are not already paused. If they are paused, abort."
-  ;; `target-roots' includes `source-root', so we begin by removing it
-  (let ((hold-cluster (remove source-root target-roots :test #'address=)))
-    (flet ((payload-constructor ()
-             (make-message-change :slot 'paused? :value t)))
-      (with-replies (replies)
-                    (send-message-batch #'payload-constructor hold-cluster)
-        (format t "pause-cluster replies: ~a~%" replies)
-        (unless (every #'identity replies)
-          (log-entry :entry-type 'aborting-multireweight
-                     :reason 'other-roots-are-paused
-                     :source-root source-root
-                     :hold-cluster hold-cluster)
-          (setf (process-lockable-aborting? supervisor) t))))))
-
 (define-process-upkeep ((supervisor supervisor))
     (MULTIREWEIGHT-BROADCAST-SCAN roots)
   "Now that we know the full `HOLD-CLUSTER', we `SCAN' each, and aggregate the results in order to make a reweighting decision."
@@ -165,15 +139,14 @@ Then, we reach the \"critical segment\", where it becomes impossible to rewind p
                 :do (assert (not (minusp (message-pong-weight reply))))
                     (setf internal-pong
                           (unify-pongs internal-pong reply)))
-          #+i(format t "(~a) [~a] {~a}: internal-pong: ~a~%" (now) supervisor roots internal-pong)
           (with-slots (target-root) internal-pong
             (let ((targets (remove-duplicates (append roots (list target-root))
                                               :test #'address=)))
               (process-continuation supervisor
                                     `(BROADCAST-LOCK ,targets)
                                     `(CHECK-ROOTS ,roots)
-                                    ;; could do a check-reweight here
                                     #+i`(BROADCAST-PINGABILITY ,hold-cluster :SOFT)
+                                    ;; TODO: could do a check-reweight variant here
                                     #+i`(BROADCAST-PINGABILITY ,hold-cluster :NONE)
                                     `(MULTIREWEIGHT-BROADCAST-REWEIGHT ,roots)
                                     `(BROADCAST-PINGABILITY ,targets :SOFT)
@@ -186,7 +159,6 @@ Then, we reach the \"critical segment\", where it becomes impossible to rewind p
   (unless (process-lockable-aborting? supervisor)
     (with-slots (internal-pong) (peek (process-data-stack supervisor))
       (let ((amount (message-pong-weight internal-pong)))
-        #+i(format t "(~a) [~a]: multireweighting with rec ~a~%" (now) supervisor internal-pong)
         (log-entry :entry-type 'multireweighting
                    :recommendation (message-pong-recommendation internal-pong)
                    :amount amount

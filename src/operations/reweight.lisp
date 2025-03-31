@@ -101,7 +101,7 @@
                                    :reply-channel listen-channel
                                    :local-root source-root
                                    :weight 0
-                                   :repeat? t))
+                                   :strategy :STAY))
         (sync-receive (listen-channel pong-message)
           (message-pong
            (unregister listen-channel)
@@ -129,7 +129,7 @@
     (let ((rewinding-pong nil)
           (original-amount (message-pong-weight original-pong)))
       (flet ((payload-constructor ()
-               (make-message-soft-scan :weight 0 :repeat? t)))
+               (make-message-soft-scan :weight 0 :strategy :STAY)))
         (with-replies (replies
                        :returned? returned?
                        :message-type message-pong

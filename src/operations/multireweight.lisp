@@ -155,7 +155,7 @@ Then, we reach the \"critical segment\", where it becomes impossible to rewind p
   (unless (process-lockable-aborting? supervisor)
     (with-slots (internal-pong) (peek (process-data-stack supervisor))
       (flet ((payload-constructor ()
-               (make-message-scan :weight 0 :internal-roots roots :repeat? t)))
+               (make-message-scan :weight 0 :internal-roots roots :strategy :STAY)))
         (with-replies (replies
                        :returned? returned?
                        :message-type message-pong

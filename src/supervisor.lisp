@@ -128,7 +128,13 @@ PONG: The PONG that this process received at its START."
       (with-replies (values-lists) (send-message-batch #'payload-constructor roots)
         (loop :for (parent pistil match-edge) :in values-lists
               :do (when (or parent pistil match-edge)
-                (setf (process-lockable-aborting? supervisor) t)))))))
+                    (log-entry :entry-type 'check-roots-aborting
+                               :roots roots
+                               :values-lists values-lists
+                               :parent parent
+                               :pistil pistil
+                               :match-edge match-edge)
+                    (setf (process-lockable-aborting? supervisor) t)))))))
 
 (define-process-upkeep ((supervisor supervisor)) (CHECK-PONG stale-pong)
   "Ensure that two locked trees still agree that this is a responsible weightless operation."

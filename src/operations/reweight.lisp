@@ -106,6 +106,9 @@
           (message-pong
            (unregister listen-channel)
            (when (< (message-pong-weight pong-message) weight)
+             (log-entry :entry-type 'check-reweight-aborting
+                        :original-pong pong
+                        :check-pong pong-message)
              (setf (process-lockable-aborting? supervisor) t))))))))
 
 (define-process-upkeep ((supervisor supervisor))

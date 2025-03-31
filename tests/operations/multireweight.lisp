@@ -958,12 +958,9 @@ it declines to take action because C has priority.
             (is (tree-equalp original-tree target-tree))))))))
 
 ;;;
-;;; multi-cluster tests (internal pong is internal)
+;;; multi-cluster tests (internal pong rec edge is cluster-internal)
 ;;;
 
-;; NB: this test is in main as-is, and should fail after the changes
-;;     (post-changes one cluster should reweight by 2)
-;;     NVM these stay the same because the internal pong is internal
 (deftest test-supervisor-multireweight-simultaneous-rewind-halfway ()
   "Checks the transformation
 
@@ -1122,8 +1119,6 @@ The point of this is to show that simultaneous reweighting and rewinding during 
                   :children (list (vv-edge L K))))
             (is (tree-equalp original-tree target-tree))))))))
 
-;; NB: this test is in main as-is, and should fail after the changes
-;;     (post-changes one cluster should reweight by 1)
 (deftest test-supervisor-multireweight-simultaneous-rewind-non-integer ()
   "Checks the transformation
 
@@ -1286,10 +1281,9 @@ The point of this is to show that simultaneous reweighting and rewinding during 
             (is (tree-equalp original-tree target-tree))))))))
 
 ;;;
-;;; multi-cluster tests (internal-pong is external)
+;;; multi-cluster tests (internal-pong rec edge is cluster-external)
+;;;
 
-;; NB: this is a new test, and should fail after the changes
-;;     (post-changes one cluster should reweight by 1)
 (deftest test-supervisor-multireweight-2-clusters ()
   "Checks the transformation
 
@@ -1462,18 +1456,18 @@ d(B, D), d(J, L) = 2 and d(F, G) = 1
                   :children (list (vv-edge N M))))
             (is (tree-equalp original-tree target-tree))))))))
 
-;; NB: this is a new test, and should fail after the changes
-;;     (post-changes one left cluster and the right cluster should reweight by 1)
 (deftest test-supervisor-multireweight-3-clusters ()
-  "Checks that this configuration will yield all 0->1/2 and all 2->3/2 for the left two clusters (A,D) and (I,L), and all 0->3/2 and all 1->1/2 for the rightmost cluster (M,P)
+  "Checks that this configuration will result in the following:
+- the leftmost cluster (A,D) will multireweight by 1
+- the rightmost cluster (M,P) will multireweight by 1
 
- 0  2  0        0  2  0   0  2  0
- +  -  +        +  -  +   +  -  +
- A->B=>C        J<=K<-L   M->N=>O
+ 0  2  0        0  2  0  0  2  0
+ +  -  +        +  -  +  +  -  +
+ A->B=>C        J<=K<-L  M->N=>O
 
-    D->E=>F  G<=H<-I         P->Q=>R
-    +  -  +  +  -  +         +  -  +
-    0  2  0  0  2  0         0  2  0
+    D->E=>F  G<=H<-I        P->Q=>R
+    +  -  +  +  -  +        +  -  +
+    0  2  0  0  2  0        0  2  0
 
 d(B, D), d(H, J), d(N, P) = 2 and d(F, G), d(L, M) = 1
 "
@@ -1679,7 +1673,6 @@ d(B, D), d(H, J), d(N, P) = 2 and d(F, G), d(L, M) = 1
                   :match-edge (vv-edge R Q)
                   :parent (vv-edge R Q)))
             (is (tree-equalp original-tree target-tree))))))))
-
 
 (deftest test-supervisor-multireweight-4-clusters ()
   "Checks that this configuration will result in the following:

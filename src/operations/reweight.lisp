@@ -117,6 +117,9 @@
     (BROADCAST-REWEIGHT roots weight)
   "Instruct some `ROOTS' to reweight their trees by `WEIGHT'."
   (unless (process-lockable-aborting? supervisor)
+    (log-entry :entry-type 'reweighting
+               :weight weight
+               :roots roots)
     (flet ((payload-constructor ()
              (make-message-broadcast-reweight :weight weight)))
       (with-replies (replies) (send-message-batch #'payload-constructor roots)

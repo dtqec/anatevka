@@ -126,6 +126,9 @@ After collecting the `HOLD-CLUSTER', we then `CHECK-PRIORITY' to determine if we
                 :do (assert (not (minusp (message-pong-weight reply))))
                     (setf internal-pong
                           (unify-pongs internal-pong reply)))
+          (log-entry :entry-type 'multireweight-broadcast-scan-result
+                     :hold-cluster roots
+                     :internal-pong internal-pong)
           (process-continuation supervisor `(START-INNER-MULTIREWEIGHT)))))))
 
 (define-process-upkeep ((supervisor supervisor))
@@ -143,7 +146,7 @@ After collecting the `HOLD-CLUSTER', we then `CHECK-PRIORITY' to determine if we
 9. Unlock the targets and tear down transient state."
   (unless (process-lockable-aborting? supervisor)
     (with-slots (hold-cluster internal-pong) (peek (process-data-stack supervisor))
-      (with-slots (target-root) internal-pong
+      (with-slots (target-root weight) internal-pong
         (let ((targets (remove-duplicates (append hold-cluster (list target-root))
                                           :test #'address=)))
           (process-continuation supervisor
@@ -152,29 +155,10 @@ After collecting the `HOLD-CLUSTER', we then `CHECK-PRIORITY' to determine if we
                                 `(BROADCAST-PINGABILITY ,targets :SOFT)
                                 `(CHECK-REWEIGHT ,hold-cluster ,internal-pong)
                                 `(BROADCAST-PINGABILITY ,targets :NONE)
-                                `(MULTIREWEIGHT-BROADCAST-REWEIGHT ,hold-cluster)
+                                `(BROADCAST-REWEIGHT ,hold-cluster ,weight)
                                 `(BROADCAST-PINGABILITY ,targets :SOFT)
-                                `(MULTIREWEIGHT-CHECK-REWINDING ,hold-cluster)
+                                `(CHECK-REWINDING ,hold-cluster ,internal-pong 0)
                                 `(BROADCAST-UNLOCK)))))))
-
-(define-process-upkeep ((supervisor supervisor))
-    (MULTIREWEIGHT-BROADCAST-REWEIGHT roots)
-  "Having aggregated coordinated advice, we now enact it by sending individual reweight instructions to all the `ROOTS'. This is achieved via the `BROADCAST-REWEIGHT' command."
-  (unless (process-lockable-aborting? supervisor)
-    (with-slots (internal-pong) (peek (process-data-stack supervisor))
-      (let ((amount (message-pong-weight internal-pong)))
-        (log-entry :entry-type 'multireweighting
-                   :recommendation (message-pong-recommendation internal-pong)
-                   :amount amount
-                   :roots roots)
-        (process-continuation supervisor `(BROADCAST-REWEIGHT ,roots ,amount))))))
-
-(define-process-upkeep ((supervisor supervisor))
-    (MULTIREWEIGHT-CHECK-REWINDING roots)
-  "Just as when we're reweighting, now we have to check to make sure we didn't create any negative-weight edges. We do so by pushing the `CHECK-REWINDING' command onto the command stack."
-  (unless (process-lockable-aborting? supervisor)
-    (with-slots (internal-pong) (peek (process-data-stack supervisor))
-      (process-continuation supervisor `(CHECK-REWINDING ,roots ,internal-pong 0)))))
 
 (define-process-upkeep ((supervisor supervisor)) (FINISH-MULTIREWEIGHT)
   "Clean up after the local state of the multireweight operation."

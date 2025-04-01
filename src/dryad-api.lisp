@@ -17,12 +17,15 @@
 
 ;;; messages between the dryad and its managed blossoms
 
+(deftype discover-strategy ()
+  '(member :BUST :HIT :STAY))
+
 (defstruct (message-discover (:include message))
   "Sent from a blossom process to a `DRYAD' to query for a list of other blossom processes to which it should send PINGs."
   (address         nil :type address)
   (id              nil :type t)
   (internal-weight nil :type real) ; NOTE: a little surprised that this isn't (REAL 0)
-  (repeat?         nil :type boolean)) 
+  (strategy        nil :type discover-strategy))
 
 (defstruct (message-discovery (:include message)
                               (:constructor %make-message-discovery))

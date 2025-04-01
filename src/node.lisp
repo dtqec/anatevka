@@ -466,7 +466,7 @@ evalutes to
     (let ((scan-message (make-message-scan
                          :local-root (process-public-address node)
                          :weight 0
-                         :repeat? repeat?)))
+                         :strategy (if repeat? ':HIT ':BUST))))
       (process-continuation node `(START-SCAN ,scan-message)))))
 
 (define-process-upkeep ((node blossom-node)) (IDLE)

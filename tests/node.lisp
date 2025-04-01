@@ -332,11 +332,12 @@ Finally, all of the nodes constructed by this BLOSSOM-LET are stashed in the pla
                     target-node
                     (process-public-address target-node))))
 
-(defun supervisor (simulation &rest pong-initargs)
+(defun supervisor (simulation &rest pong-initargs &key (time 0) &allow-other-keys)
   "Helper constructor for a SUPERVISOR primed to run a bespoke PONG."
   (initialize-and-return
       ((supervisor (spawn-process 'anatevka::supervisor :debug? t)))
-    (simulation-add-event simulation (make-event :callback supervisor :time 0))
+    (simulation-add-event simulation (make-event :callback supervisor :time time))
+    (remf pong-initargs :time)
     (push (apply #'anatevka::make-message-pong
                  (append pong-initargs
                          (list :weight 0)))

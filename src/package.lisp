@@ -61,7 +61,7 @@
    #:message-discover-address           ; ACCESSOR
    #:message-discover-id                ; ACCESSOR
    #:message-discover-internal-weight   ; ACCESSOR
-   #:message-discover-repeat?           ; ACCESSOR
+   #:message-discover-strategy          ; ACCESSOR
    #:message-discovery-channels-to-try  ; ACCESSOR
    #:message-discovery-future-distance  ; ACCESSOR
    #:message-sprout-address             ; ACCESSOR

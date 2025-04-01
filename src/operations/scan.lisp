@@ -70,7 +70,7 @@ Most of the slots are self-explanatory.  As an exception, ROOT-BUCKET aggregates
   (local-blossom  nil :type (or null address))
   (weight         nil :type real)
   (internal-roots nil :type list)
-  (repeat?        nil :type boolean))
+  (strategy       nil :type discover-strategy))
 
 (defstruct (message-soft-scan (:include message-scan))
   "The same as a SCAN, but it generates soft PINGs.")
@@ -202,7 +202,7 @@ When INTERNAL-ROOT-SET is supplied, discard HOLD recommendations which emanate f
   (petals         nil :type list)
   (weight         nil :type real)
   (internal-roots nil :type list)
-  (repeat?        nil :type boolean))
+  (strategy       nil :type discover-strategy))
 
 ;;;
 ;;; blossom-node command definitions
@@ -257,7 +257,7 @@ When INTERNAL-ROOT-SET is supplied, discard HOLD recommendations which emanate f
                                            (blossom-node-children node))))
          (internal-roots (or (message-scan-internal-roots scan-message)
                              (list local-root)))
-         (repeat? (slot-value scan-message 'repeat?)))
+         (strategy (slot-value scan-message 'strategy)))
     (log-entry :entry-type 'starting-scan
                :deweight weight)
     (push (make-data-frame-scan :local-root local-root
@@ -266,7 +266,7 @@ When INTERNAL-ROOT-SET is supplied, discard HOLD recommendations which emanate f
                                 :pong pong
                                 :soft? soft?
                                 :internal-roots internal-roots
-                                :repeat? repeat?)
+                                :strategy strategy)
           (process-data-stack node))
     ;; load (most of) script
     (process-continuation node
@@ -278,13 +278,13 @@ When INTERNAL-ROOT-SET is supplied, discard HOLD recommendations which emanate f
   "Request from the dryad responsible for this node a list of candidate node neighbors with which to coordinate for this node's next operation.  Defers the actual processing of that list to PROCESS-ADDRESSES."
   (unless (or (blossom-node-petals node)
               (not (blossom-node-positive? node)))
-    (with-slots (weight repeat?) (peek (process-data-stack node))
+    (with-slots (weight strategy) (peek (process-data-stack node))
       (sync-rpc (make-message-discover
                  :id (blossom-node-id node)
                  :address (process-public-address node)
                  ;; negated bc `weight' is negated above in `START-SCAN' let block
                  :internal-weight (- weight)
-                 :repeat? repeat?)
+                 :strategy strategy)
           (discovery-message (blossom-node-dryad node)
            :message-type message-discovery :message-unpacker identity
            :returned? returned?)
@@ -303,7 +303,7 @@ When INTERNAL-ROOT-SET is supplied, discard HOLD recommendations which emanate f
 
 (define-process-upkeep ((node blossom-node)) (FORWARD-SCAN addresses)
   "Sends a SCAN message to each of the children tabulated in ADDRESSES."
-  (with-slots (local-root local-blossom weight pong soft? internal-roots repeat?)
+  (with-slots (local-root local-blossom weight pong soft? internal-roots strategy)
       (peek (process-data-stack node))
     (unless (blossom-node-wilting node)
       (flet ((payload-constructor ()
@@ -314,14 +314,14 @@ When INTERNAL-ROOT-SET is supplied, discard HOLD recommendations which emanate f
                    :local-blossom local-blossom
                    :weight weight
                    :internal-roots internal-roots
-                   :repeat? repeat?))
+                   :strategy strategy))
                  (t
                   (make-message-scan
                    :local-root local-root
                    :local-blossom local-blossom
                    :weight weight
                    :internal-roots internal-roots
-                   :repeat? repeat?)))))
+                   :strategy strategy)))))
         (with-replies (replies
                        :returned? returned?
                        :message-type message-pong

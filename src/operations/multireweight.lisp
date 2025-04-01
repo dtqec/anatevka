@@ -67,20 +67,7 @@
     (CONVERGECAST-COLLECT-ROOTS source-root root-bucket)
   "Recursively collects the `HELD-BY-ROOTS' values of `ROOT-BUCKET' to determine the set of roots that are participating in this `HOLD' cluster (meaning that they are mutually held by each other), starting with a base `cluster' of just the `SOURCE-ROOT'. If any replies are NIL, we abort.
 
-After collecting the `HOLD-CLUSTER', we then `CHECK-PRIORITY' to determine if we should proceed or abort.
-
-Then, we reach the \"critical segment\", where it becomes impossible to rewind partway through the modifications we're about to make:
-
-1. Lock the `HOLD-CLUSTER'.
-2. Check that each root in the `HOLD-CLUSTER' is still a root.
-3. Change the pingability of the cluster to `:SOFT'.
-4. Scan the `HOLD-CLUSTER' for the best external rec to use for reweighting.
-5. Change the pingability of the cluster to `:NONE'.
-6. Reweight the `HOLD-CLUSTER' according to the recommendation.
-7. Change the pingability of the cluster to `:SOFT'.
-8. Check to see if the `HOLD-CLUSTER' should be rewound, and do so if need be.
-9. Unlock the targets and tear down transient state.
-"
+After collecting the `HOLD-CLUSTER', we then `CHECK-PRIORITY' to determine if we should proceed or abort. If we don't abort, then we move on to performing an 'internal scan' to figure out how to proceed."
   (let ((cluster (list source-root)))
     (with-slots (hold-cluster) (peek (process-data-stack supervisor))
       (flet ((payload-constructor ()
@@ -105,15 +92,7 @@ Then, we reach the \"critical segment\", where it becomes impossible to rewind p
           ;; otherwise, push the next set of commands onto the stack
           (process-continuation supervisor
                                 `(CHECK-PRIORITY ,source-root ,hold-cluster)
-                                `(BROADCAST-LOCK ,hold-cluster)
-                                `(CHECK-ROOTS ,hold-cluster)
-                                `(BROADCAST-PINGABILITY ,hold-cluster :SOFT)
-                                `(MULTIREWEIGHT-BROADCAST-SCAN ,hold-cluster)
-                                `(BROADCAST-PINGABILITY ,hold-cluster :NONE)
-                                `(MULTIREWEIGHT-BROADCAST-REWEIGHT ,hold-cluster)
-                                `(BROADCAST-PINGABILITY ,hold-cluster :SOFT)
-                                `(MULTIREWEIGHT-CHECK-REWINDING ,hold-cluster)
-                                `(BROADCAST-UNLOCK)))))))
+                                `(MULTIREWEIGHT-BROADCAST-SCAN ,hold-cluster)))))))
 
 (define-process-upkeep ((supervisor supervisor))
     (CHECK-PRIORITY source-root target-roots)
@@ -137,7 +116,7 @@ Then, we reach the \"critical segment\", where it becomes impossible to rewind p
   (unless (process-lockable-aborting? supervisor)
     (with-slots (internal-pong) (peek (process-data-stack supervisor))
       (flet ((payload-constructor ()
-               (make-message-soft-scan :weight 0 :internal-roots roots :repeat? t)))
+               (make-message-scan :weight 0 :internal-roots roots :strategy ':STAY)))
         (with-replies (replies
                        :returned? returned?
                        :message-type message-pong
@@ -146,26 +125,40 @@ Then, we reach the \"critical segment\", where it becomes impossible to rewind p
           (loop :for reply :in replies :unless (null reply)
                 :do (assert (not (minusp (message-pong-weight reply))))
                     (setf internal-pong
-                          (unify-pongs internal-pong reply))))))))
+                          (unify-pongs internal-pong reply)))
+          (log-entry :entry-type 'multireweight-broadcast-scan-result
+                     :hold-cluster roots
+                     :internal-pong internal-pong)
+          (process-continuation supervisor `(START-INNER-MULTIREWEIGHT)))))))
 
 (define-process-upkeep ((supervisor supervisor))
-    (MULTIREWEIGHT-BROADCAST-REWEIGHT roots)
-  "Having aggregated coordinated advice, we now enact it by sending individual reweight instructions to all the `ROOTS'. This is achieved via the `BROADCAST-REWEIGHT' command."
-  (unless (process-lockable-aborting? supervisor)
-    (with-slots (internal-pong) (peek (process-data-stack supervisor))
-      (let ((amount (message-pong-weight internal-pong)))
-        (log-entry :entry-type 'multireweighting
-                   :recommendation (message-pong-recommendation internal-pong)
-                   :amount amount
-                   :roots roots)
-        (process-continuation supervisor `(BROADCAST-REWEIGHT ,roots ,amount))))))
+    (START-INNER-MULTIREWEIGHT)
+  "Finally, we reach the 'critical section', where it becomes impossible to rewind partway through the modifications we're about to make:
 
-(define-process-upkeep ((supervisor supervisor))
-    (MULTIREWEIGHT-CHECK-REWINDING roots)
-  "Just as when we're reweighting, now we have to check to make sure we didn't create any negative-weight edges. We do so by pushing the `CHECK-REWINDING' command onto the command stack."
+1. Lock the `TARGETS' (the `HOLD-CLUSTER' and potentially an external `TARGET-ROOT').
+2. Check that each root in the `HOLD-CLUSTER' is still a root.
+3. Change the pingability of the `TARGETS' to `:SOFT'.
+4. Check that our multireweight recommendation is still valid.
+5. Change the pingability of the `TARGETS' to `:NONE'.
+6. Reweight the `HOLD-CLUSTER' according to the recommendation.
+7. Change the pingability of the `TARGETS' to `:SOFT'.
+8. Check to see if the `HOLD-CLUSTER' should be rewound, and do so if need be.
+9. Unlock the targets and tear down transient state."
   (unless (process-lockable-aborting? supervisor)
-    (with-slots (internal-pong) (peek (process-data-stack supervisor))
-      (process-continuation supervisor `(CHECK-REWINDING ,roots ,internal-pong 0)))))
+    (with-slots (hold-cluster internal-pong) (peek (process-data-stack supervisor))
+      (with-slots (target-root weight) internal-pong
+        (let ((targets (remove-duplicates (append hold-cluster (list target-root))
+                                          :test #'address=)))
+          (process-continuation supervisor
+                                `(BROADCAST-LOCK ,targets)
+                                `(CHECK-ROOTS ,hold-cluster)
+                                `(BROADCAST-PINGABILITY ,targets :SOFT)
+                                `(CHECK-REWEIGHT ,hold-cluster ,internal-pong)
+                                `(BROADCAST-PINGABILITY ,targets :NONE)
+                                `(BROADCAST-REWEIGHT ,hold-cluster ,weight)
+                                `(BROADCAST-PINGABILITY ,targets :SOFT)
+                                `(CHECK-REWINDING ,hold-cluster ,internal-pong 0)
+                                `(BROADCAST-UNLOCK)))))))
 
 (define-process-upkeep ((supervisor supervisor)) (FINISH-MULTIREWEIGHT)
   "Clean up after the local state of the multireweight operation."

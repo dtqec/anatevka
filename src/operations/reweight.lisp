@@ -61,15 +61,16 @@
   "Sets up the reweight procedure.
 
 1. Lock the targets.
-2. Change their pingability to `:SOFT'.
-3. Check for a weightless edge. Abort if found.
-4. Change the pingability of the targets to `:NONE'.
-5. Reweight the `source-root' by the `weight' of the `pong'.
-6. Change the pingability of the targets to `:SOFT'.
-7. Check if reweighting the `source-root' resulted in a negative-weight edge.
+2. Check that the `source-root' is still a root.
+3. Change their pingability to `:SOFT'.
+4. Check for a weightless edge. Abort if found.
+5. Change the pingability of the targets to `:NONE'.
+6. Reweight the `source-root' by the `weight' of the `pong'.
+7. Change the pingability of the targets to `:SOFT'.
+8. Check if reweighting the `source-root' resulted in a negative-weight edge.
     a. If so, and this is the second time we've been here, rewind fully.
     b. Otherwise, if so, rewind the reweighting by half and go back to (7).
-8. Unlock the targets.
+9. Unlock the targets.
 "
   (with-slots (source-root target-root weight) pong
     ;; the contents of `targets' depend on the recommendation. it always
@@ -83,8 +84,7 @@
                             `(BROADCAST-LOCK ,targets)
                             `(CHECK-ROOTS (,source-root))
                             `(BROADCAST-PINGABILITY ,targets :SOFT)
-                            `(CHECK-REWEIGHT ,pong)
-                            ;; it bugs me a bit having to switch this back & forth
+                            `(CHECK-REWEIGHT (,source-root) ,pong)
                             `(BROADCAST-PINGABILITY ,targets :NONE)
                             `(BROADCAST-REWEIGHT (,source-root) ,weight)
                             `(BROADCAST-PINGABILITY ,targets :SOFT)
@@ -92,26 +92,34 @@
                             `(BROADCAST-UNLOCK)
                             `(HALT)))))
 
-(define-process-upkeep ((supervisor supervisor)) (CHECK-REWEIGHT pong)
+(define-process-upkeep ((supervisor supervisor)) (CHECK-REWEIGHT roots original-pong)
   "Because `CHECK-PONG' doesn't do a global check, we potentially can end up with a reweighting when we shouldn't. This fixes that by making sure that there are no lower-weight recommendations available before we begin reweighting."
   (unless (process-lockable-aborting? supervisor)
-    (with-slots (source-root weight) pong
-      (let ((listen-channel (register)))
-        (send-message source-root (make-message-soft-scan
-                                   :reply-channel listen-channel
-                                   :local-root source-root
-                                   :weight 0
-                                   :repeat? t))
-        (sync-receive (listen-channel pong-message)
-          (message-pong
-           (unregister listen-channel)
-           (when (< (message-pong-weight pong-message) weight)
-             (setf (process-lockable-aborting? supervisor) t))))))))
+    (let ((check-pong nil)
+          (original-weight (message-pong-weight original-pong)))
+      (flet ((payload-constructor ()
+               (make-message-soft-scan :weight 0
+                                       :internal-roots roots
+                                       :strategy ':STAY)))
+        (with-replies (replies
+                       :message-type message-pong
+                       :message-unpacker identity)
+                      (send-message-batch #'payload-constructor roots)
+          (loop :for reply :in replies :unless (null reply)
+                :do (setf check-pong (unify-pongs check-pong reply)))
+          (when (< (message-pong-weight check-pong) original-weight)
+            (log-entry :entry-type 'check-reweight-aborting
+                       :original-pong original-pong
+                       :check-pong check-pong)
+            (setf (process-lockable-aborting? supervisor) t)))))))
 
 (define-process-upkeep ((supervisor supervisor))
     (BROADCAST-REWEIGHT roots weight)
   "Instruct some `ROOTS' to reweight their trees by `WEIGHT'."
   (unless (process-lockable-aborting? supervisor)
+    (log-entry :entry-type 'reweighting
+               :weight weight
+               :roots roots)
     (flet ((payload-constructor ()
              (make-message-broadcast-reweight :weight weight)))
       (with-replies (replies) (send-message-batch #'payload-constructor roots)
@@ -126,7 +134,7 @@
     (let ((rewinding-pong nil)
           (original-amount (message-pong-weight original-pong)))
       (flet ((payload-constructor ()
-               (make-message-soft-scan :weight 0 :repeat? t)))
+               (make-message-soft-scan :weight 0 :strategy ':STAY)))
         (with-replies (replies
                        :returned? returned?
                        :message-type message-pong

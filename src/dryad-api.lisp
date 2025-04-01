@@ -25,7 +25,7 @@
   (address         nil :type address)
   (id              nil :type t)
   (internal-weight nil :type real) ; NOTE: a little surprised that this isn't (REAL 0)
-  (strategy        nil :type (or null discover-strategy)))
+  (strategy        nil :type discover-strategy))
 
 (defstruct (message-discovery (:include message)
                               (:constructor %make-message-discovery))

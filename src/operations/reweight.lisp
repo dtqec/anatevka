@@ -100,7 +100,7 @@
       (flet ((payload-constructor ()
                (make-message-soft-scan :weight 0
                                        :internal-roots roots
-                                       :strategy :STAY)))
+                                       :strategy ':STAY)))
         (with-replies (replies
                        :message-type message-pong
                        :message-unpacker identity)
@@ -134,7 +134,7 @@
     (let ((rewinding-pong nil)
           (original-amount (message-pong-weight original-pong)))
       (flet ((payload-constructor ()
-               (make-message-soft-scan :weight 0 :strategy :STAY)))
+               (make-message-soft-scan :weight 0 :strategy ':STAY)))
         (with-replies (replies
                        :returned? returned?
                        :message-type message-pong

@@ -116,7 +116,7 @@ After collecting the `HOLD-CLUSTER', we then `CHECK-PRIORITY' to determine if we
   (unless (process-lockable-aborting? supervisor)
     (with-slots (internal-pong) (peek (process-data-stack supervisor))
       (flet ((payload-constructor ()
-               (make-message-scan :weight 0 :internal-roots roots :strategy :STAY)))
+               (make-message-scan :weight 0 :internal-roots roots :strategy ':STAY)))
         (with-replies (replies
                        :returned? returned?
                        :message-type message-pong

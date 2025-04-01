@@ -70,7 +70,7 @@ Most of the slots are self-explanatory.  As an exception, ROOT-BUCKET aggregates
   (local-blossom  nil :type (or null address))
   (weight         nil :type real)
   (internal-roots nil :type list)
-  (strategy       nil :type (or null discover-strategy)))
+  (strategy       nil :type discover-strategy))
 
 (defstruct (message-soft-scan (:include message-scan))
   "The same as a SCAN, but it generates soft PINGs.")
@@ -202,7 +202,7 @@ When INTERNAL-ROOT-SET is supplied, discard HOLD recommendations which emanate f
   (petals         nil :type list)
   (weight         nil :type real)
   (internal-roots nil :type list)
-  (strategy       nil :type (or null discover-strategy)))
+  (strategy       nil :type discover-strategy))
 
 ;;;
 ;;; blossom-node command definitions

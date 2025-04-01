@@ -83,7 +83,7 @@
                             `(BROADCAST-LOCK ,targets)
                             `(CHECK-ROOTS (,source-root))
                             `(BROADCAST-PINGABILITY ,targets :SOFT)
-                            `(CHECK-REWEIGHT ,pong)
+                            `(CHECK-REWEIGHT (,source-root) ,pong)
                             ;; it bugs me a bit having to switch this back & forth
                             `(BROADCAST-PINGABILITY ,targets :NONE)
                             `(BROADCAST-REWEIGHT (,source-root) ,weight)
@@ -92,24 +92,24 @@
                             `(BROADCAST-UNLOCK)
                             `(HALT)))))
 
-(define-process-upkeep ((supervisor supervisor)) (CHECK-REWEIGHT pong)
+(define-process-upkeep ((supervisor supervisor)) (CHECK-REWEIGHT roots original-pong)
   "Because `CHECK-PONG' doesn't do a global check, we potentially can end up with a reweighting when we shouldn't. This fixes that by making sure that there are no lower-weight recommendations available before we begin reweighting."
   (unless (process-lockable-aborting? supervisor)
-    (with-slots (source-root weight) pong
-      (let ((listen-channel (register)))
-        (send-message source-root (make-message-soft-scan
-                                   :reply-channel listen-channel
-                                   :local-root source-root
-                                   :weight 0
-                                   :strategy :STAY))
-        (sync-receive (listen-channel pong-message)
-          (message-pong
-           (unregister listen-channel)
-           (when (< (message-pong-weight pong-message) weight)
-             (log-entry :entry-type 'check-reweight-aborting
-                        :original-pong pong
-                        :check-pong pong-message)
-             (setf (process-lockable-aborting? supervisor) t))))))))
+    (let ((check-pong nil)
+          (original-weight (message-pong-weight original-pong)))
+      (flet ((payload-constructor ()
+               (make-message-soft-scan :weight 0 :strategy :STAY)))
+        (with-replies (replies
+                       :message-type message-pong
+                       :message-unpacker identity)
+                      (send-message-batch #'payload-constructor roots)
+          (loop :for reply :in replies :unless (null reply)
+                :do (setf check-pong (unify-pongs check-pong reply)))
+          (when (< (message-pong-weight check-pong) original-weight)
+            (log-entry :entry-type 'check-reweight-aborting
+                       :original-pong original-pong
+                       :check-pong check-pong)
+            (setf (process-lockable-aborting? supervisor) t)))))))
 
 (define-process-upkeep ((supervisor supervisor))
     (BROADCAST-REWEIGHT roots weight)

@@ -134,9 +134,9 @@ After collecting the `HOLD-CLUSTER', we then `CHECK-PRIORITY' to determine if we
 
 1. Lock the `TARGETS' (the `HOLD-CLUSTER' and potentially an external `TARGET-ROOT').
 2. Check that each root in the `HOLD-CLUSTER' is still a root.
-3. (TODO) Change the pingability of the `TARGETS' to `:SOFT'.
-4. (TODO) Check that our multireweight recommendation is still valid.
-5. (TODO) Change the pingability of the `TARGETS' to `:NONE'.
+3. Change the pingability of the `TARGETS' to `:SOFT'.
+4. Check that our multireweight recommendation is still valid.
+5. Change the pingability of the `TARGETS' to `:NONE'.
 6. Reweight the `HOLD-CLUSTER' according to the recommendation.
 7. Change the pingability of the `TARGETS' to `:SOFT'.
 8. Check to see if the `HOLD-CLUSTER' should be rewound, and do so if need be.
@@ -149,9 +149,9 @@ After collecting the `HOLD-CLUSTER', we then `CHECK-PRIORITY' to determine if we
           (process-continuation supervisor
                                 `(BROADCAST-LOCK ,targets)
                                 `(CHECK-ROOTS ,hold-cluster)
-                                #+i`(BROADCAST-PINGABILITY ,targets :SOFT)
-                                #+i`(CHECK-REWEIGHT ,hold-cluster ,internal-pong)
-                                #+i`(BROADCAST-PINGABILITY ,targets :NONE)
+                                `(BROADCAST-PINGABILITY ,targets :SOFT)
+                                `(CHECK-REWEIGHT ,hold-cluster ,internal-pong)
+                                `(BROADCAST-PINGABILITY ,targets :NONE)
                                 `(MULTIREWEIGHT-BROADCAST-REWEIGHT ,hold-cluster)
                                 `(BROADCAST-PINGABILITY ,targets :SOFT)
                                 `(MULTIREWEIGHT-CHECK-REWINDING ,hold-cluster)

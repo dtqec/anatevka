@@ -61,15 +61,16 @@
   "Sets up the reweight procedure.
 
 1. Lock the targets.
-2. Change their pingability to `:SOFT'.
-3. Check for a weightless edge. Abort if found.
-4. Change the pingability of the targets to `:NONE'.
-5. Reweight the `source-root' by the `weight' of the `pong'.
-6. Change the pingability of the targets to `:SOFT'.
-7. Check if reweighting the `source-root' resulted in a negative-weight edge.
+2. Check that the `source-root' is still a root.
+3. Change their pingability to `:SOFT'.
+4. Check for a weightless edge. Abort if found.
+5. Change the pingability of the targets to `:NONE'.
+6. Reweight the `source-root' by the `weight' of the `pong'.
+7. Change the pingability of the targets to `:SOFT'.
+8. Check if reweighting the `source-root' resulted in a negative-weight edge.
     a. If so, and this is the second time we've been here, rewind fully.
     b. Otherwise, if so, rewind the reweighting by half and go back to (7).
-8. Unlock the targets.
+9. Unlock the targets.
 "
   (with-slots (source-root target-root weight) pong
     ;; the contents of `targets' depend on the recommendation. it always
@@ -84,7 +85,6 @@
                             `(CHECK-ROOTS (,source-root))
                             `(BROADCAST-PINGABILITY ,targets :SOFT)
                             `(CHECK-REWEIGHT (,source-root) ,pong)
-                            ;; it bugs me a bit having to switch this back & forth
                             `(BROADCAST-PINGABILITY ,targets :NONE)
                             `(BROADCAST-REWEIGHT (,source-root) ,weight)
                             `(BROADCAST-PINGABILITY ,targets :SOFT)
@@ -98,7 +98,9 @@
     (let ((check-pong nil)
           (original-weight (message-pong-weight original-pong)))
       (flet ((payload-constructor ()
-               (make-message-soft-scan :weight 0 :strategy :STAY)))
+               (make-message-soft-scan :weight 0
+                                       :internal-roots roots
+                                       :strategy :STAY)))
         (with-replies (replies
                        :message-type message-pong
                        :message-unpacker identity)

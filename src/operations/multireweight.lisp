@@ -149,9 +149,9 @@ After collecting the `HOLD-CLUSTER', we then `CHECK-PRIORITY' to determine if we
           (process-continuation supervisor
                                 `(BROADCAST-LOCK ,targets)
                                 `(CHECK-ROOTS ,hold-cluster)
-                                #+i`(BROADCAST-PINGABILITY ,hold-cluster :SOFT)
-                                ;; TODO: could do a check-reweight variant here
-                                #+i`(BROADCAST-PINGABILITY ,hold-cluster :NONE)
+                                #+i`(BROADCAST-PINGABILITY ,targets :SOFT)
+                                #+i`(CHECK-REWEIGHT ,hold-cluster ,internal-pong)
+                                #+i`(BROADCAST-PINGABILITY ,targets :NONE)
                                 `(MULTIREWEIGHT-BROADCAST-REWEIGHT ,hold-cluster)
                                 `(BROADCAST-PINGABILITY ,targets :SOFT)
                                 `(MULTIREWEIGHT-CHECK-REWINDING ,hold-cluster)

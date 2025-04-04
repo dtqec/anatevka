@@ -54,32 +54,67 @@
 (in-package #:anatevka)
 
 ;;;
+;;; supervisor data frame
+;;;
+
+(defstruct data-frame-reweight
+  "Data frame associated to a `SUPERVISOR' process enacting `REWEIGHT'.
+
+`PONG': The `message-pong' passed to this `SUPERVISOR' upon spawn.
+
+`TARGETS': The lock targets collected as part of this operation."
+  (pong    nil :type message-pong)
+  (targets nil :type list))
+
+;;;
 ;;; supervisor command definitions
 ;;;
 
 (define-process-upkeep ((supervisor supervisor)) (START-REWEIGHT pong)
-  "Sets up the reweight procedure.
+  "Sets up the reweight procedure by first gathering lock targets."
+  (push (make-data-frame-reweight :pong pong) (process-data-stack supervisor))
+  (process-continuation supervisor
+                        `(GATHER-TARGETS)
+                        `(START-INNER-REWEIGHT)
+                        `(FINISH-REWEIGHT)))
 
-1. Lock the targets.
+(define-process-upkeep ((supervisor supervisor)) (GATHER-TARGETS)
+  "Before entering the critical section, we must determine which roots we should lock. If our target-root is not NIL, we need to lock it and the hold cluster it is contained within (if any). NB: This is only relevant to non-weightless operations (reweight and multireweight)."
+  (unless (process-lockable-aborting? supervisor)
+    (with-slots (pong targets) (peek (process-data-stack supervisor))
+      (with-slots (source-root target-root) pong
+        (push source-root targets)
+        ;; the contents of `targets' depend on the recommendation. it always
+        ;; includes the `source-root', and additionally
+        ;;  - `AUGMENT': the `target-root' (and potentially its hold cluster)
+        ;;  - `GRAFT': one end of the barbell
+        ;;  - `EXPAND' or `CONTRACT': nothing
+        (cond
+          ((null target-root)
+           (push source-root targets))
+          (t
+           (sync-rpc (make-message-convergecast-collect-roots) (target-cluster target-root)
+               (setf targets (remove-duplicates
+                              (append (list source-root target-root) target-cluster)
+                              :test #'address=)))))))))
+
+(define-process-upkeep ((supervisor supervisor)) (START-INNER-REWEIGHT)
+  "The reweight 'critical section':
+
+1. Lock the `TARGETS'.
 2. Check that the `source-root' is still a root.
-3. Change their pingability to `:SOFT'.
+3. Change the pingability of the `TARGETS' to `:SOFT'.
 4. Check for a weightless edge. Abort if found.
-5. Change the pingability of the targets to `:NONE'.
+5. Change the pingability of the `TARGETS' to `:NONE'.
 6. Reweight the `source-root' by the `weight' of the `pong'.
-7. Change the pingability of the targets to `:SOFT'.
+7. Change the pingability of the `TARGETS' to `:SOFT'.
 8. Check if reweighting the `source-root' resulted in a negative-weight edge.
     a. If so, and this is the second time we've been here, rewind fully.
     b. Otherwise, if so, rewind the reweighting by half and go back to (7).
-9. Unlock the targets.
+9. Unlock the `TARGETS'.
 "
-  (with-slots (source-root target-root weight) pong
-    ;; the contents of `targets' depend on the recommendation. it always
-    ;; includes the `source-root', and additionally
-    ;;  - `AUGMENT': the `target-root'
-    ;;  - `GRAFT': one end of the barbell
-    ;;  - `EXPAND' or `CONTRACT': nothing
-    (let ((targets (remove-duplicates (list source-root target-root)
-                                      :test #'address=)))
+  (with-slots (pong targets) (peek (process-data-stack supervisor))
+    (with-slots (source-root weight) pong
       (process-continuation supervisor
                             `(BROADCAST-LOCK ,targets)
                             `(CHECK-ROOTS (,source-root))
@@ -195,6 +230,10 @@
                   (process-continuation supervisor
                                         `(BROADCAST-PINGABILITY ,roots :NONE)
                                         `(BROADCAST-REWEIGHT ,roots ,rewinding-amount)))))))))))
+
+(define-process-upkeep ((supervisor supervisor)) (FINISH-REWEIGHT)
+  "Clean up after the local state of the reweight operation."
+  (pop (process-data-stack supervisor)))
 
 ;;;
 ;;; message definitions

@@ -42,9 +42,12 @@
 
 `HOLD-CLUSTER': The aggregated set of mutually held roots, for which deadlock can only be broken via `MULTIREWEIGHT'.
 
-`INTERNAL-PONG': The unified `message-pong' among the different roots in this `HOLD-CLUSTER', where all the roots in the cluster are treated as part of the same tree.  Ultimately serves to measure the amount by which to `MULTIREWEIGHT'."
+`INTERNAL-PONG': The unified `message-pong' among the different roots in this `HOLD-CLUSTER', where all the roots in the cluster are treated as part of the same tree.  Ultimately serves to measure the amount by which to `MULTIREWEIGHT'.
+
+`TARGETS': The lock targets collected as part of this operation."
   (hold-cluster  nil :type list)
-  (internal-pong nil :type (or null message-pong)))
+  (internal-pong nil :type (or null message-pong))
+  (targets       nil :type list))
 
 ;;;
 ;;; supervisor command definitions
@@ -92,6 +95,7 @@ After collecting the `HOLD-CLUSTER', we then `CHECK-PRIORITY' to determine if we
           ;; otherwise, push the next set of commands onto the stack
           (process-continuation supervisor
                                 `(CHECK-PRIORITY ,source-root ,hold-cluster)
+                                `(SET-HELD-BY-ROOTS ,hold-cluster)
                                 `(MULTIREWEIGHT-BROADCAST-SCAN ,hold-cluster)))))))
 
 (define-process-upkeep ((supervisor supervisor))
@@ -109,6 +113,21 @@ After collecting the `HOLD-CLUSTER', we then `CHECK-PRIORITY' to determine if we
                        :source-root source-root
                        :hold-cluster hold-cluster)
             (setf (process-lockable-aborting? supervisor) t)))))))
+
+(define-process-upkeep ((supervisor supervisor)) (SET-HELD-BY-ROOTS hold-cluster)
+  "Sets the `held-by-roots' slot on every element in the `HOLD-CLUSTER' to equal the `HOLD-CLUSTER'. I don't think this is _strictly_ necessary, but could speed up some future convergecasts."
+  (unless (process-lockable-aborting? supervisor)
+    (log-entry :entry-type 'set-held-by-roots
+               :held-by-roots hold-cluster)
+    (flet ((payload-constructor ()
+             (make-message-set :slots '(held-by-roots) :values `(,hold-cluster))))
+      (with-replies (replies :returned? returned?)
+                    (send-message-batch #'payload-constructor hold-cluster)
+        (when returned?
+          (log-entry :entry-type 'aborting-multireweight
+                     :reason 'returned?-during-set-held-by-roots
+                     :hold-cluster hold-cluster)
+          (setf (process-lockable-aborting? supervisor) t))))))
 
 (define-process-upkeep ((supervisor supervisor))
     (MULTIREWEIGHT-BROADCAST-SCAN roots)
@@ -129,7 +148,23 @@ After collecting the `HOLD-CLUSTER', we then `CHECK-PRIORITY' to determine if we
           (log-entry :entry-type 'multireweight-broadcast-scan-result
                      :hold-cluster roots
                      :internal-pong internal-pong)
-          (process-continuation supervisor `(START-INNER-MULTIREWEIGHT)))))))
+          (process-continuation supervisor
+                                `(GATHER-TARGETS-MULTIREWEIGHT)
+                                `(START-INNER-MULTIREWEIGHT)))))))
+
+(define-process-upkeep ((supervisor supervisor)) (GATHER-TARGETS-MULTIREWEIGHT)
+  "Before entering the critical section, we must determine which roots we should lock. If our target-root is outside of our hold-cluster, we need to lock it and the hold cluster it is contained within (if any)."
+  (unless (process-lockable-aborting? supervisor)
+    (with-slots (hold-cluster internal-pong targets) (peek (process-data-stack supervisor))
+      (with-slots (target-root) internal-pong
+        (cond
+          ((member target-root hold-cluster :test #'address=)
+           (setf targets hold-cluster))
+          (t
+           (sync-rpc (make-message-convergecast-collect-roots) (target-cluster target-root)
+               (setf targets (remove-duplicates
+                              (append hold-cluster (list target-root) target-cluster)
+                              :test #'address=)))))))))
 
 (define-process-upkeep ((supervisor supervisor))
     (START-INNER-MULTIREWEIGHT)
@@ -145,20 +180,18 @@ After collecting the `HOLD-CLUSTER', we then `CHECK-PRIORITY' to determine if we
 8. Check to see if the `HOLD-CLUSTER' should be rewound, and do so if need be.
 9. Unlock the targets and tear down transient state."
   (unless (process-lockable-aborting? supervisor)
-    (with-slots (hold-cluster internal-pong) (peek (process-data-stack supervisor))
-      (with-slots (target-root weight) internal-pong
-        (let ((targets (remove-duplicates (append hold-cluster (list target-root))
-                                          :test #'address=)))
-          (process-continuation supervisor
-                                `(BROADCAST-LOCK ,targets)
-                                `(CHECK-ROOTS ,hold-cluster)
-                                `(BROADCAST-PINGABILITY ,targets :SOFT)
-                                `(CHECK-REWEIGHT ,hold-cluster ,internal-pong)
-                                `(BROADCAST-PINGABILITY ,targets :NONE)
-                                `(BROADCAST-REWEIGHT ,hold-cluster ,weight)
-                                `(BROADCAST-PINGABILITY ,targets :SOFT)
-                                `(CHECK-REWINDING ,hold-cluster ,internal-pong 0)
-                                `(BROADCAST-UNLOCK)))))))
+    (with-slots (hold-cluster internal-pong targets) (peek (process-data-stack supervisor))
+      (with-slots (weight) internal-pong
+        (process-continuation supervisor
+                              `(BROADCAST-LOCK ,targets)
+                              `(CHECK-ROOTS ,hold-cluster)
+                              `(BROADCAST-PINGABILITY ,targets :SOFT)
+                              `(CHECK-REWEIGHT ,hold-cluster ,internal-pong)
+                              `(BROADCAST-PINGABILITY ,targets :NONE)
+                              `(BROADCAST-REWEIGHT ,hold-cluster ,weight)
+                              `(BROADCAST-PINGABILITY ,targets :SOFT)
+                              `(CHECK-REWINDING ,hold-cluster ,internal-pong 0)
+                              `(BROADCAST-UNLOCK))))))
 
 (define-process-upkeep ((supervisor supervisor)) (FINISH-MULTIREWEIGHT)
   "Clean up after the local state of the multireweight operation."
@@ -175,7 +208,6 @@ After collecting the `HOLD-CLUSTER', we then `CHECK-PRIORITY' to determine if we
 ;;;
 ;;; message handlers
 ;;;
-
 
 (define-convergecast-handler handle-message-convergecast-collect-roots
     ((node blossom-node) (message message-convergecast-collect-roots))

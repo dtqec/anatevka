@@ -68,4 +68,7 @@
 
 (define-blossom-suite "10" ()) ; 10x10 grid tests
 
+;; NB: this test doesn't pass w/o GATHER-TARGETS
+(define-blossom-suite "15" ()) ; 15x15 grid tests
+
 (define-blossom-suite "20" (:timeout 2000)) ; 20x20 grid tests

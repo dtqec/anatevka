@@ -93,7 +93,8 @@
           ((null target-root)
            (push source-root targets))
           (t
-           (sync-rpc (make-message-convergecast-collect-roots) (target-cluster target-root)
+           (sync-rpc (make-message-convergecast-collect-roots)
+               (target-cluster target-root :returned? returned?)
                (setf targets (remove-duplicates
                               (append (list source-root target-root) target-cluster)
                               :test #'address=)))))))))

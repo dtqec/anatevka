@@ -104,7 +104,7 @@ After collecting the `HOLD-CLUSTER', we then `CHECK-PRIORITY' to determine if we
   ;; `target-roots' includes `source-root', so we begin by removing it
   (let ((hold-cluster (remove source-root target-roots :test #'address=)))
     (sync-rpc (make-message-id-query) (source-id source-root)
-      (with-replies (replies)
+      (with-replies (replies :returned? returned?)
                     (send-message-batch #'make-message-id-query hold-cluster)
         (let ((cluster-id (reduce #'min-id replies)))
           (unless (equalp source-id (min-id source-id cluster-id))
@@ -122,12 +122,7 @@ After collecting the `HOLD-CLUSTER', we then `CHECK-PRIORITY' to determine if we
     (flet ((payload-constructor ()
              (make-message-set :slots '(held-by-roots) :values `(,hold-cluster))))
       (with-replies (replies :returned? returned?)
-                    (send-message-batch #'payload-constructor hold-cluster)
-        (when returned?
-          (log-entry :entry-type 'aborting-multireweight
-                     :reason 'returned?-during-set-held-by-roots
-                     :hold-cluster hold-cluster)
-          (setf (process-lockable-aborting? supervisor) t))))))
+                    (send-message-batch #'payload-constructor hold-cluster)))))
 
 (define-process-upkeep ((supervisor supervisor))
     (MULTIREWEIGHT-BROADCAST-SCAN roots)
@@ -161,7 +156,8 @@ After collecting the `HOLD-CLUSTER', we then `CHECK-PRIORITY' to determine if we
           ((member target-root hold-cluster :test #'address=)
            (setf targets hold-cluster))
           (t
-           (sync-rpc (make-message-convergecast-collect-roots) (target-cluster target-root)
+           (sync-rpc (make-message-convergecast-collect-roots)
+               (target-cluster target-root :returned? returned?)
                (setf targets (remove-duplicates
                               (append hold-cluster (list target-root) target-cluster)
                               :test #'address=)))))))))

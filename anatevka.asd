@@ -17,7 +17,6 @@
   :serial t
   :components ((:file "package")
                (:file "utilities")
-               (:file "logger")
                (:file "dryad-api")
                (:file "node")
                (:file "supervisor")
@@ -31,4 +30,5 @@
                              (:file "contract")
                              (:file "multireweight")
                              (:file "reweight")))
-               (:file "dryad")))
+               (:file "dryad")
+               (:file "logger")))

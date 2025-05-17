@@ -9,7 +9,7 @@
 ;;;
 
 (defmethod print-log-entry (entry
-                            (source-type (eql 'SUPERVISOR))
+                            (source supervisor)
                             (entry-type (eql 'GOT-RECOMMENDATION))
                             &optional (stream *standard-output*))
   (format stream "~5f: SUPERVISOR ~a got recommendation ~a (~a; ~{~a~^ ~}) from root: ~a~%"
@@ -21,14 +21,14 @@
           (getf entry ':source-root)))
 
 (defmethod print-log-entry (entry
-                            (source-type (eql 'SUPERVISOR))
+                            (source supervisor)
                             (entry-type (eql 'SUCCESS))
                             &optional (stream *standard-output*))
   (format stream "~5f: SUPERVISOR ~a closing.~%"
           (getf entry ':time) (getf entry ':source)))
 
 (defmethod print-log-entry (entry
-                            (source-type (eql 'BLOSSOM-NODE))
+                            (source blossom-node)
                             (entry-type (eql 'SET-UP-BLOSSOM))
                             &optional (stream *standard-output*))
   "Log entry for when a blossom node finishes setting itself up."
@@ -43,7 +43,7 @@
           (getf entry ':pistil)))
 
 (defmethod print-log-entry (entry
-                            (source-type (eql 'DRYAD))
+                            (source dryad)
                             (entry-type (eql 'HANDLING-SOW))
                             &optional (stream *standard-output*))
   (format stream "~5f: Spawning blossom ~a at ~a.~%"
@@ -58,54 +58,50 @@
 (defun successful-supervisors (entries)
   "Collects addresses of supervisors which either complete successfully or fail to complete at all."
   (loop :for entry :in entries
-        :when (and (eql 'SUPERVISOR (getf entry ':source-type))
+        :when (and (typep (getf entry ':source) 'supervisor)
                    (eql 'SUCCESS (getf entry ':entry-type))
                    (eql T (getf entry ':success)))
-          :collect (getf entry ':source) :into positive-addresses
-        :when (and (eql 'SUPERVISOR (getf entry ':source-type))
+          :collect (getf entry ':source) :into positive-processes
+        :when (and (typep (getf entry ':source) 'supervisor)
                    (eql 'GOT-RECOMMENDATION (getf entry ':entry-type))
                    (eql ':HOLD (getf entry ':recommendation))
                    (address=
                     (blossom-edge-source-node (first (getf entry ':edges)))
                     (blossom-edge-target-node (first (getf entry ':edges)))))
-          :collect (getf entry ':source) :into self-held-addresses
-        :when (and (eql 'SUPERVISOR (getf entry ':source-type))
+          :collect (getf entry ':source) :into self-held-processes
+        :when (and (typep (getf entry ':source) 'supervisor)
                    (eql 'COMMAND (getf entry ':entry-type))
                    (eql ':START (getf entry ':command)))
-          :collect (getf entry ':source) :into start-addresses
-        :when (and (eql 'SUPERVISOR (getf entry ':source-type))
+          :collect (getf entry ':source) :into start-processes
+        :when (and (typep (getf entry ':source) 'supervisor)
                    (eql 'SUCCESS (getf entry ':entry-type)))
-          :collect (getf entry ':source) :into done-addresses
-        :finally (return (union (set-difference positive-addresses
-                                                self-held-addresses
-                                                :test #'address=)
-                                (set-difference start-addresses
-                                                done-addresses
-                                                :test #'address=)))))
+          :collect (getf entry ':source) :into done-processes
+        :finally (return (union (set-difference positive-processes self-held-processes)
+                                (set-difference start-processes done-processes)))))
 
 (defun reduce-log (log)
   "Trims log messages to only ones of primary interest."
   (let (entries
-        (successful-addresses (successful-supervisors (logger-entries log))))
+        (successful-processes (successful-supervisors (logger-entries log))))
     (dolist (entry (reverse (logger-entries log)) (reverse entries))
       (cond
-        ((and (eql 'SUPERVISOR (getf entry ':source-type))
+        ((and (typep (getf entry ':source) 'supervisor)
               (eql 'GOT-RECOMMENDATION (getf entry ':entry-type))
-              (member (getf entry ':source) successful-addresses :test #'address=))
+              (member (getf entry ':source) successful-processes))
          (push entry entries))
-        ((or (and (eql 'SUPERVISOR (getf entry ':source-type))
+        ((or (and (typep (getf entry ':source) 'supervisor)
                   (eql 'SUCCESS (getf entry ':entry-type))
-                  (member (getf entry ':source) successful-addresses :test #'address=))
-             (and (eql 'SUPERVISOR (getf entry ':source-type))
+                  (member (getf entry ':source) successful-processes))
+             (and (typep (getf entry ':source) 'supervisor)
                   (eql 'REWINDING (getf entry ':entry-type)))
-             (and (eql 'SUPERVISOR (getf entry ':source-type))
+             (and (typep (getf entry ':source) 'supervisor)
                   (eql 'MULTIREWEIGHTING (getf entry ':entry-type)))
              (and (eql 'MESSAGE-WILT (type-of (getf entry ':payload))))
              (and (eql 'SPAWNED-FRESH-BLOSSOM (getf entry ':entry-type)))
              (and (eql 'BLOSSOM-EXTINGUISHED (getf entry ':entry-type))))
          (push entry entries))
         ;; dryad logs
-        ((and (eql 'DRYAD (getf entry ':source-type))
+        ((and (typep (getf entry ':source) 'dryad)
               ;; dryad sowing
               (or (eql 'HANDLING-SOW (getf entry ':entry-type))
                   (eql 'HANDLING-SPROUT (getf entry ':entry-type))
@@ -123,7 +119,7 @@
         relevant-supervisors)
     (dolist (entry (reverse (logger-entries log)) (reverse entries))
       (cond
-        ((and (eql 'SUPERVISOR (getf entry ':source-type))
+        ((and (typep (getf entry ':source) 'supervisor)
               (eql 'GOT-RECOMMENDATION (getf entry ':entry-type))
               (or (and (not (null (getf entry ':source-root)))
                        (address= address (getf entry ':source-root)))
@@ -131,6 +127,6 @@
                        (address= address (getf entry ':target-root)))))
          (push (getf entry ':source) relevant-supervisors)
          (push entry entries))
-        ((and (eql 'SUPERVISOR (getf entry ':source-type))
-              (member (getf entry ':source) relevant-supervisors :test #'address=))
+        ((and (typep (getf entry ':source) 'supervisor)
+              (member (getf entry ':source) relevant-supervisors))
          (push entry entries))))))

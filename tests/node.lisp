@@ -11,6 +11,12 @@
   x
   y)
 
+(defmethod print-object ((object grid-location) stream)
+  (print-unreadable-object (object stream :type nil :identity nil)
+    (format stream "(~a, ~a)"
+            (grid-location-x object)
+            (grid-location-y object))))
+
 (defmethod min-id ((x grid-location) (y grid-location))
   (cond
     ((< (grid-location-x x) (grid-location-x y))

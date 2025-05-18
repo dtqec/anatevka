@@ -24,8 +24,8 @@
                             (source supervisor)
                             (entry-type (eql ':success))
                             &optional (stream *standard-output*))
-  (format stream "~5f: SUPERVISOR ~a closing.~%"
-          (getf entry ':time) (getf entry ':source)))
+  (format stream "~5f: SUPERVISOR ~a closing with success ~a.~%"
+          (getf entry ':time) (getf entry ':source) (getf entry ':success)))
 
 (defmethod print-log-entry (entry
                             (source blossom-node)

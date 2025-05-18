@@ -113,11 +113,10 @@
          (push entry entries))))))
 
 
-(defun logs-for-address (log address)
+(defun supervisor-logs-for-address (logger address)
   "Trims log messages to only ones related to SUPERVISOR actions involving `ADDRESS'."
-  (let (entries
-        relevant-supervisors)
-    (dolist (entry (reverse (logger-entries log)) (reverse entries))
+  (let (entries relevant-supervisors)
+    (dolist (entry (reverse (logger-entries logger)) (reverse entries))
       (cond
         ((and (typep (getf entry ':source) 'supervisor)
               (eql ':got-recommendation (getf entry ':entry-type))

@@ -9,10 +9,21 @@
 ;;;
 
 (defmethod print-log-entry (entry
+                            (source dryad)
+                            (entry-type (eql ':handling-sow))
+                            &optional (stream *standard-output*))
+  (format stream "~5f: [~a] sowed ~a ~a at ~a~%"
+          (getf entry ':time)
+          (getf entry ':source)
+          (getf entry ':type)
+          (getf entry ':address)
+          (getf entry ':id)))
+
+(defmethod print-log-entry (entry
                             (source supervisor)
                             (entry-type (eql ':got-recommendation))
                             &optional (stream *standard-output*))
-  (format stream "~5f: SUPERVISOR ~a got recommendation ~a (~a; ~{~a~^ ~}) from root: ~a~%"
+  (format stream "~5f: [~a] got recommendation ~a ~a ~{~a~^ ~} from ~a~%"
           (getf entry ':time)
           (getf entry ':source)
           (getf entry ':recommendation)
@@ -22,10 +33,22 @@
 
 (defmethod print-log-entry (entry
                             (source supervisor)
+                            (entry-type (eql ':reweighting))
+                            &optional (stream *standard-output*))
+  (format stream "~5f: [~a] reweighting roots ~a by ~a~%"
+          (getf entry ':time)
+          (getf entry ':source)
+          (getf entry ':roots)
+          (getf entry ':weight)))
+
+(defmethod print-log-entry (entry
+                            (source supervisor)
                             (entry-type (eql ':success))
                             &optional (stream *standard-output*))
-  (format stream "~5f: SUPERVISOR ~a closing with success ~a.~%"
-          (getf entry ':time) (getf entry ':source) (getf entry ':success)))
+  (format stream "~5f: [~a] closing with ~a~%"
+          (getf entry ':time)
+          (getf entry ':source)
+          (if (getf entry ':success) "success" "failure")))
 
 (defmethod print-log-entry (entry
                             (source blossom-node)
@@ -42,18 +65,26 @@
           (getf entry ':petals)
           (getf entry ':pistil)))
 
-(defmethod print-log-entry (entry
-                            (source dryad)
-                            (entry-type (eql ':handling-sow))
-                            &optional (stream *standard-output*))
-  (format stream "~5f: Spawning blossom ~a at ~a.~%"
-          (getf entry ':time)
-          (getf entry ':address)
-          (getf entry ':id)))
-
 ;;;
 ;;; filtering routines
 ;;;
+
+(defun supervisor-logs-for-address (address &optional (logger *logger*))
+  "Trims log messages to only ones related to SUPERVISOR actions involving `ADDRESS'."
+  (let (entries relevant-supervisors)
+    (dolist (entry (reverse (logger-entries logger)) (reverse entries))
+      (cond
+        ((and (typep (getf entry ':source) 'supervisor)
+              (eql ':got-recommendation (getf entry ':entry-type))
+              (or (and (not (null (getf entry ':source-root)))
+                       (address= address (getf entry ':source-root)))
+                  (and (not (null (not (null (getf entry ':target-root)))))
+                       (address= address (getf entry ':target-root)))))
+         (push (getf entry ':source) relevant-supervisors)
+         (push entry entries))
+        ((and (typep (getf entry ':source) 'supervisor)
+              (member (getf entry ':source) relevant-supervisors))
+         (push entry entries))))))
 
 (defun successful-supervisors (entries)
   "Collects addresses of supervisors which either complete successfully or fail to complete at all."
@@ -79,53 +110,43 @@
         :finally (return (union (set-difference positive-processes self-held-processes)
                                 (set-difference start-processes done-processes)))))
 
-(defun reduce-log (log)
-  "Trims log messages to only ones of primary interest."
+(defgeneric algorithmic-entry? (entry source)
+  (:documentation "Used to define which subset of `ENTRY' types emanating from `SOURCE' are critical to understanding algorithmic developments."))
+
+(defmethod algorithmic-entry? (entry (source supervisor))
+  (or (eql ':got-recommendation (getf entry ':entry-type))
+      (eql ':success (getf entry ':entry-type))
+      (eql ':reweighting (getf entry ':entry-type))
+      (eql ':rewinding (getf entry ':entry-type))
+      (eql ':multireweighting (getf entry ':entry-type))))
+
+(defun reduced-log (&optional (logger *logger*))
+  "Trims log messages to only ones of primary interest (see `ALGORITHMIC-ENTRY?')."
   (let (entries
-        (successful-processes (successful-supervisors (logger-entries log))))
-    (dolist (entry (reverse (logger-entries log)) (reverse entries))
-      (cond
-        ((and (typep (getf entry ':source) 'supervisor)
-              (eql ':got-recommendation (getf entry ':entry-type))
-              (member (getf entry ':source) successful-processes))
-         (push entry entries))
-        ((or (and (typep (getf entry ':source) 'supervisor)
-                  (eql ':success (getf entry ':entry-type))
-                  (member (getf entry ':source) successful-processes))
-             (and (typep (getf entry ':source) 'supervisor)
-                  (eql ':rewinding (getf entry ':entry-type)))
-             (and (typep (getf entry ':source) 'supervisor)
-                  (eql ':multireweighting (getf entry ':entry-type)))
-             (and (eql ':message-wilt (type-of (getf entry ':payload))))
-             (and (eql ':spawned-fresh-blossom (getf entry ':entry-type)))
-             (and (eql ':blossom-extinguished (getf entry ':entry-type))))
-         (push entry entries))
-        ;; dryad logs
-        ((and (typep (getf entry ':source) 'dryad)
-              ;; dryad sowing
-              (or (eql ':handling-sow (getf entry ':entry-type))
-                  (eql ':handling-sprout (getf entry ':entry-type))
-                  (eql ':processing-pair (getf entry ':entry-type))
-                  ;; dryad expansion
-                  (and (eql ':command (getf entry ':entry-type))
-                       (eql ':send-expand (getf entry ':command)))
-                  (eql ':dryad-sending-expand (getf entry ':entry-type))))
-         (push entry entries))))))
-
-
-(defun supervisor-logs-for-address (logger address)
-  "Trims log messages to only ones related to SUPERVISOR actions involving `ADDRESS'."
-  (let (entries relevant-supervisors)
+        (successful-processes (successful-supervisors (logger-entries logger))))
     (dolist (entry (reverse (logger-entries logger)) (reverse entries))
-      (cond
-        ((and (typep (getf entry ':source) 'supervisor)
-              (eql ':got-recommendation (getf entry ':entry-type))
-              (or (and (not (null (getf entry ':source-root)))
-                       (address= address (getf entry ':source-root)))
-                  (and (not (null (not (null (getf entry ':target-root)))))
-                       (address= address (getf entry ':target-root)))))
-         (push (getf entry ':source) relevant-supervisors)
-         (push entry entries))
-        ((and (typep (getf entry ':source) 'supervisor)
-              (member (getf entry ':source) relevant-supervisors))
-         (push entry entries))))))
+      (let ((source (getf entry ':source)))
+        (cond
+          ((and (typep source 'supervisor)
+                (member source successful-processes)
+                (algorithmic-entry? entry source))
+           (push entry entries))
+          ((or (and (eql ':message-wilt (type-of (getf entry ':payload))))
+               (and (eql ':spawned-fresh-blossom (getf entry ':entry-type)))
+               (and (eql ':blossom-extinguished (getf entry ':entry-type))))
+           (push entry entries))
+          ;; dryad logs
+          ((and (typep (getf entry ':source) 'dryad)
+                ;; dryad sowing
+                (or (eql ':handling-sow (getf entry ':entry-type))
+                    (eql ':handling-sprout (getf entry ':entry-type))
+                    (eql ':processing-pair (getf entry ':entry-type))
+                    ;; dryad expansion
+                    (and (eql ':command (getf entry ':entry-type))
+                         (eql ':send-expand (getf entry ':command)))
+                    (eql ':dryad-sending-expand (getf entry ':entry-type))))
+           (push entry entries)))))))
+
+(defun print-reduced-log (&optional (logger *logger*))
+  "Shorthand for printing the results of `REDUCED-LOG."
+  (print-log (reduced-log logger)))

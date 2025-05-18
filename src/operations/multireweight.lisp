@@ -151,16 +151,28 @@ After collecting the `HOLD-CLUSTER', we then `CHECK-PRIORITY' to determine if we
   "Before entering the critical section, we must determine which roots we should lock. If our target-root is outside of our hold-cluster, we need to lock it and the hold cluster it is contained within (if any)."
   (unless (process-lockable-aborting? supervisor)
     (with-slots (hold-cluster internal-pong targets) (peek (process-data-stack supervisor))
-      (with-slots (target-root) internal-pong
+      (with-slots (source-root target-root) internal-pong
+        (log-entry :entry-type ':gathering-targets-multireweight
+                   :internal-pong (copy-message-pong internal-pong)
+                   :source-root source-root
+                   :target-root target-root
+                   :hold-cluster hold-cluster
+                   :targets targets)
         (cond
           ((member target-root hold-cluster :test #'address=)
            (setf targets hold-cluster))
           (t
            (sync-rpc (make-message-convergecast-collect-roots)
                (target-cluster target-root :returned? returned?)
-               (setf targets (remove-duplicates
-                              (append hold-cluster (list target-root) target-cluster)
-                              :test #'address=)))))))))
+             (setf targets (remove-duplicates
+                            (append hold-cluster (list target-root) target-cluster)
+                            :test #'address=))
+             (log-entry :entry-type ':collected-target-cluster-multireweight
+                        :source-root source-root
+                        :target-root target-root
+                        :target-cluster target-cluster
+                        :hold-cluster hold-cluster
+                        :targets targets))))))))
 
 (define-process-upkeep ((supervisor supervisor))
     (START-INNER-MULTIREWEIGHT)

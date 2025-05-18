@@ -89,15 +89,25 @@
         ;;  - `AUGMENT': the `target-root' (and potentially its hold cluster)
         ;;  - `GRAFT': one end of the barbell
         ;;  - `EXPAND' or `CONTRACT': nothing
+        (log-entry :entry-type ':gathering-targets
+                   :pong (copy-message-pong pong)
+                   :source-root source-root
+                   :target-root target-root
+                   :targets targets)
         (cond
           ((null target-root)
            (push source-root targets))
           (t
            (sync-rpc (make-message-convergecast-collect-roots)
                (target-cluster target-root :returned? returned?)
-               (setf targets (remove-duplicates
-                              (append (list source-root target-root) target-cluster)
-                              :test #'address=)))))))))
+             (setf targets (remove-duplicates
+                            (append (list source-root target-root) target-cluster)
+                            :test #'address=))
+             (log-entry :entry-type ':collected-target-cluster
+                        :source-root source-root
+                        :target-root target-root
+                        :target-cluster target-cluster
+                        :targets targets))))))))
 
 (define-process-upkeep ((supervisor supervisor)) (START-INNER-REWEIGHT)
   "The reweight 'critical section':
@@ -143,6 +153,9 @@
                       (send-message-batch #'payload-constructor roots)
           (loop :for reply :in replies :unless (null reply)
                 :do (setf check-pong (unify-pongs check-pong reply)))
+          (log-entry :entry-type ':check-reweight-details
+                     :original-pong original-pong
+                     :check-pong check-pong)
           (when (< (message-pong-weight check-pong) original-weight)
             (log-entry :entry-type ':check-reweight-aborting
                        :original-pong original-pong

@@ -71,7 +71,8 @@ NOTE: In the basic implementation, these messages must be waiting for the DRYAD 
          (node-address (process-public-address node-process)))
     (log-entry :entry-type ':handling-sow
                :address node-address
-               :id node-id)
+               :id node-id
+               :type (type-of node-process))
     (schedule node-process (now))
     (setf (gethash node-address (dryad-ids       dryad)) node-id
           (gethash node-address (dryad-sprouted? dryad)) nil)))

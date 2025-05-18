@@ -75,7 +75,7 @@ PONG: The PONG that this process received at its START."
   "Set up initial state: the stack frame and which procedure to branch on."
   (let ((pong (pop (process-data-stack supervisor))))
     (with-slots (edges weight source-root target-root recommendation) pong
-      (log-entry :entry-type 'got-recommendation
+      (log-entry :entry-type ':got-recommendation
                  :source-root source-root
                  :target-root target-root
                  :recommendation recommendation
@@ -90,7 +90,7 @@ PONG: The PONG that this process received at its START."
           ;; with `ENSURE-ABORTING' which crashes the algorithm if `CHECK-PONG'
           ;; doesn't cause this supervisor to abort.
           ((minusp weight)
-           (log-entry :entry-type 'invalid-recommendation :weight weight)
+           (log-entry :entry-type ':invalid-recommendation :weight weight)
            (process-continuation supervisor
                                  `(CHECK-PONG ,pong)
                                  `(ENSURE-ABORTING ,pong)
@@ -112,7 +112,7 @@ PONG: The PONG that this process received at its START."
           ;; set `returned?' to handle RTSes gracefully as we
           ;; (intentionally) don't have an aborting? guard
           (set-result source-root :returned? returned?)
-        (log-entry :entry-type 'success
+        (log-entry :entry-type ':success
                    :success (not (process-lockable-aborting? supervisor)))
         (process-die)))))
 
@@ -128,7 +128,7 @@ PONG: The PONG that this process received at its START."
       (with-replies (values-lists) (send-message-batch #'payload-constructor roots)
         (loop :for (parent pistil match-edge) :in values-lists
               :do (when (or parent pistil match-edge)
-                    (log-entry :entry-type 'check-roots-aborting
+                    (log-entry :entry-type ':check-roots-aborting
                                :roots roots
                                :values-lists values-lists
                                :parent parent
@@ -154,7 +154,7 @@ PONG: The PONG that this process received at its START."
            (blossom-edge-source-vertex
             (car (last (message-pong-edges stale-pong))))
            :message-type message-pong :message-unpacker identity)
-        (log-entry :entry-type 'local-pong-recommendation
+        (log-entry :entry-type ':local-pong-recommendation
                    :recommendation (message-pong-recommendation local-pong))
         ;; send a ping to the far vertex with this local weight
         (let ((local-blossom (blossom-edge-target-node

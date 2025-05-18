@@ -309,7 +309,7 @@ evalutes to
     ((node blossom-node) (message message-broadcast-pingability))
   "Changes the pingability of `NODE' (and children / petals) to `PING-TYPE'."
   (with-slots (ping-type) message
-    (log-entry :entry-type 'changing-pingability
+    (log-entry :entry-type ':changing-pingability
                :old-pingability (blossom-node-pingable node)
                :new-pingability ping-type)
     (setf (blossom-node-pingable node) ping-type)

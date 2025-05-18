@@ -78,8 +78,8 @@ After collecting the `HOLD-CLUSTER', we then `CHECK-PRIORITY' to determine if we
         (with-replies (replies :returned? returned?)
           (send-message-batch #'payload-constructor root-bucket)
           (when (some #'null replies)
-            (log-entry :entry-type 'aborting-multireweight
-                       :reason 'root-collection-failed
+            (log-entry :entry-type ':aborting-multireweight
+                       :reason ':root-collection-failed
                        :hold-cluster cluster
                        :held-by-roots root-bucket)
             (setf (process-lockable-aborting? supervisor) t)
@@ -87,8 +87,8 @@ After collecting the `HOLD-CLUSTER', we then `CHECK-PRIORITY' to determine if we
           (setf hold-cluster (reduce #'address-union (list* cluster replies)))
           ;; don't bother _multi_reweighting if we're in a cluster of 1.
           (when (endp (rest hold-cluster))
-            (log-entry :entry-type 'aborting-multireweight
-                       :reason 'cluster-of-one
+            (log-entry :entry-type ':aborting-multireweight
+                       :reason ':cluster-of-one
                        :hold-cluster hold-cluster)
             (setf (process-lockable-aborting? supervisor) t)
             (finish-handler))
@@ -108,8 +108,8 @@ After collecting the `HOLD-CLUSTER', we then `CHECK-PRIORITY' to determine if we
                     (send-message-batch #'make-message-id-query hold-cluster)
         (let ((cluster-id (reduce #'min-id replies)))
           (unless (equalp source-id (min-id source-id cluster-id))
-            (log-entry :entry-type 'aborting-multireweight
-                       :reason 'dont-have-priority
+            (log-entry :entry-type ':aborting-multireweight
+                       :reason ':dont-have-priority
                        :source-root source-root
                        :hold-cluster hold-cluster)
             (setf (process-lockable-aborting? supervisor) t)))))))
@@ -117,7 +117,7 @@ After collecting the `HOLD-CLUSTER', we then `CHECK-PRIORITY' to determine if we
 (define-process-upkeep ((supervisor supervisor)) (SET-HELD-BY-ROOTS hold-cluster)
   "Sets the `held-by-roots' slot on every element in the `HOLD-CLUSTER' to equal the `HOLD-CLUSTER'. I don't think this is _strictly_ necessary, but could speed up some future convergecasts."
   (unless (process-lockable-aborting? supervisor)
-    (log-entry :entry-type 'set-held-by-roots
+    (log-entry :entry-type ':set-held-by-roots
                :held-by-roots hold-cluster)
     (flet ((payload-constructor ()
              (make-message-set :slots '(held-by-roots) :values `(,hold-cluster))))
@@ -140,7 +140,7 @@ After collecting the `HOLD-CLUSTER', we then `CHECK-PRIORITY' to determine if we
                 :do (assert (not (minusp (message-pong-weight reply))))
                     (setf internal-pong
                           (unify-pongs internal-pong reply)))
-          (log-entry :entry-type 'multireweight-broadcast-scan-result
+          (log-entry :entry-type ':multireweight-broadcast-scan-result
                      :hold-cluster roots
                      :internal-pong internal-pong)
           (process-continuation supervisor

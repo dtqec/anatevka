@@ -10,7 +10,7 @@
 
 (defmethod print-log-entry (entry
                             (source supervisor)
-                            (entry-type (eql 'GOT-RECOMMENDATION))
+                            (entry-type (eql ':got-recommendation))
                             &optional (stream *standard-output*))
   (format stream "~5f: SUPERVISOR ~a got recommendation ~a (~a; ~{~a~^ ~}) from root: ~a~%"
           (getf entry ':time)
@@ -22,14 +22,14 @@
 
 (defmethod print-log-entry (entry
                             (source supervisor)
-                            (entry-type (eql 'SUCCESS))
+                            (entry-type (eql ':success))
                             &optional (stream *standard-output*))
   (format stream "~5f: SUPERVISOR ~a closing.~%"
           (getf entry ':time) (getf entry ':source)))
 
 (defmethod print-log-entry (entry
                             (source blossom-node)
-                            (entry-type (eql 'SET-UP-BLOSSOM))
+                            (entry-type (eql ':set-up-blossom))
                             &optional (stream *standard-output*))
   "Log entry for when a blossom node finishes setting itself up."
   (format stream "~5f: BLOSSOM ~a completed setting up (peduncle: ~a; match: ~a; children: ~{~a~^ ~}; parent: ~a; petals: ~{~a~^ ~}; pistil: ~a)~%"
@@ -44,7 +44,7 @@
 
 (defmethod print-log-entry (entry
                             (source dryad)
-                            (entry-type (eql 'HANDLING-SOW))
+                            (entry-type (eql ':handling-sow))
                             &optional (stream *standard-output*))
   (format stream "~5f: Spawning blossom ~a at ~a.~%"
           (getf entry ':time)
@@ -59,22 +59,22 @@
   "Collects addresses of supervisors which either complete successfully or fail to complete at all."
   (loop :for entry :in entries
         :when (and (typep (getf entry ':source) 'supervisor)
-                   (eql 'SUCCESS (getf entry ':entry-type))
+                   (eql ':success (getf entry ':entry-type))
                    (eql T (getf entry ':success)))
           :collect (getf entry ':source) :into positive-processes
         :when (and (typep (getf entry ':source) 'supervisor)
-                   (eql 'GOT-RECOMMENDATION (getf entry ':entry-type))
+                   (eql ':got-recommendation (getf entry ':entry-type))
                    (eql ':HOLD (getf entry ':recommendation))
                    (address=
                     (blossom-edge-source-node (first (getf entry ':edges)))
                     (blossom-edge-target-node (first (getf entry ':edges)))))
           :collect (getf entry ':source) :into self-held-processes
         :when (and (typep (getf entry ':source) 'supervisor)
-                   (eql 'COMMAND (getf entry ':entry-type))
+                   (eql ':command (getf entry ':entry-type))
                    (eql ':START (getf entry ':command)))
           :collect (getf entry ':source) :into start-processes
         :when (and (typep (getf entry ':source) 'supervisor)
-                   (eql 'SUCCESS (getf entry ':entry-type)))
+                   (eql ':success (getf entry ':entry-type)))
           :collect (getf entry ':source) :into done-processes
         :finally (return (union (set-difference positive-processes self-held-processes)
                                 (set-difference start-processes done-processes)))))
@@ -86,30 +86,30 @@
     (dolist (entry (reverse (logger-entries log)) (reverse entries))
       (cond
         ((and (typep (getf entry ':source) 'supervisor)
-              (eql 'GOT-RECOMMENDATION (getf entry ':entry-type))
+              (eql ':got-recommendation (getf entry ':entry-type))
               (member (getf entry ':source) successful-processes))
          (push entry entries))
         ((or (and (typep (getf entry ':source) 'supervisor)
-                  (eql 'SUCCESS (getf entry ':entry-type))
+                  (eql ':success (getf entry ':entry-type))
                   (member (getf entry ':source) successful-processes))
              (and (typep (getf entry ':source) 'supervisor)
-                  (eql 'REWINDING (getf entry ':entry-type)))
+                  (eql ':rewinding (getf entry ':entry-type)))
              (and (typep (getf entry ':source) 'supervisor)
-                  (eql 'MULTIREWEIGHTING (getf entry ':entry-type)))
-             (and (eql 'MESSAGE-WILT (type-of (getf entry ':payload))))
-             (and (eql 'SPAWNED-FRESH-BLOSSOM (getf entry ':entry-type)))
-             (and (eql 'BLOSSOM-EXTINGUISHED (getf entry ':entry-type))))
+                  (eql ':multireweighting (getf entry ':entry-type)))
+             (and (eql ':message-wilt (type-of (getf entry ':payload))))
+             (and (eql ':spawned-fresh-blossom (getf entry ':entry-type)))
+             (and (eql ':blossom-extinguished (getf entry ':entry-type))))
          (push entry entries))
         ;; dryad logs
         ((and (typep (getf entry ':source) 'dryad)
               ;; dryad sowing
-              (or (eql 'HANDLING-SOW (getf entry ':entry-type))
-                  (eql 'HANDLING-SPROUT (getf entry ':entry-type))
-                  (eql 'PROCESSING-PAIR (getf entry ':entry-type))
+              (or (eql ':handling-sow (getf entry ':entry-type))
+                  (eql ':handling-sprout (getf entry ':entry-type))
+                  (eql ':processing-pair (getf entry ':entry-type))
                   ;; dryad expansion
-                  (and (eql 'COMMAND (getf entry ':entry-type))
-                       (eql 'SEND-EXPAND (getf entry ':command)))
-                  (eql 'DRYAD-SENDING-EXPAND (getf entry ':entry-type))))
+                  (and (eql ':command (getf entry ':entry-type))
+                       (eql ':send-expand (getf entry ':command)))
+                  (eql ':dryad-sending-expand (getf entry ':entry-type))))
          (push entry entries))))))
 
 
@@ -120,7 +120,7 @@
     (dolist (entry (reverse (logger-entries log)) (reverse entries))
       (cond
         ((and (typep (getf entry ':source) 'supervisor)
-              (eql 'GOT-RECOMMENDATION (getf entry ':entry-type))
+              (eql ':got-recommendation (getf entry ':entry-type))
               (or (and (not (null (getf entry ':source-root)))
                        (address= address (getf entry ':source-root)))
                   (and (not (null (not (null (getf entry ':target-root)))))

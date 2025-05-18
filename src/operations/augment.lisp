@@ -62,7 +62,7 @@
 (define-process-upkeep ((supervisor supervisor)) (AUGMENT edge)
   "Perform an augmentation along a given edge."
   (unless (process-lockable-aborting? supervisor)
-    (log-entry :entry-type 'augment
+    (log-entry :entry-type ':augment
                :from (blossom-edge-source-node edge)
                :to (blossom-edge-target-node edge))
     (sync-rpc (make-message-percolate :traversal-edge edge)

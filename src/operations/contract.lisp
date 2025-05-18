@@ -103,7 +103,7 @@ PETAL-CHILD-EDGES: The list of child edges attached to the blossoms in the subtr
                                          :paused? t
                                          :debug? (process-debug? supervisor))))
       (schedule fresh-blossom (now))
-      (log-entry :entry-type 'spawned-fresh-blossom
+      (log-entry :entry-type ':spawned-fresh-blossom
                  :fresh-blossom fresh-blossom)
       (push (make-data-frame-contract
              :fresh-blossom (process-public-address fresh-blossom)
@@ -395,7 +395,7 @@ If we have a non-null peduncle edge (F -> C above), then we need to tell its sou
           (blossom-node-dryad node)         dryad
           ;; lastly, unpause our new blossom so that it can SCAN
           (blossom-node-paused? node)        nil)
-    (log-entry :entry-type 'SET-UP-BLOSSOM
+    (log-entry :entry-type ':set-up-blossom
                :peduncle-edge peduncle-edge
                :match-edge (blossom-node-match-edge node)
                :children (blossom-node-children node)

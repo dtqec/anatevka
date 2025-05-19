@@ -111,14 +111,15 @@
                                 (set-difference start-processes done-processes)))))
 
 (defgeneric algorithmic-entry? (entry source)
-  (:documentation "Used to define which subset of `ENTRY' types emanating from `SOURCE' are critical to understanding algorithmic developments."))
+  (:documentation "Used to define which subset of `ENTRY' types emanating from `SOURCE' are critical to understanding algorithmic developments.")
+  (:method (entry source) nil))
 
 (defmethod algorithmic-entry? (entry (source supervisor))
-  (or (eql ':got-recommendation (getf entry ':entry-type))
-      (eql ':success (getf entry ':entry-type))
-      (eql ':reweighting (getf entry ':entry-type))
-      (eql ':rewinding (getf entry ':entry-type))
-      (eql ':multireweighting (getf entry ':entry-type))))
+  (member (getf entry ':entry-type) '(:got-recommendation
+                                      :success
+                                      :reweighting
+                                      :rewinding
+                                      :multireweighting)))
 
 (defun reduced-log (&optional (logger *logger*))
   "Trims log messages to only ones of primary interest (see `ALGORITHMIC-ENTRY?')."

@@ -190,5 +190,40 @@
            (push entry entries)))))))
 
 (defun print-reduced-log (&optional (logger *logger*))
-  "Shorthand for printing the results of `REDUCED-LOG."
+  "Shorthand for printing the results of `REDUCED-LOG'."
   (print-log (reduced-log logger)))
+
+(defgeneric debug-entry? (entry source)
+  (:documentation "Used to define which subset of `ENTRY' types emanating from `SOURCE' are helpful for debugging.")
+  (:method (entry source) nil))
+
+(defmethod debug-entry? (entry (source supervisor))
+  (member (getf entry ':entry-type) '(:aborting-multireweight)))
+
+(defun debug-log (&optional (logger *logger*))
+  "Trims log messages to only ones useful to debugging (see `DEBUG-ENTRY?')."
+  (let (entries
+        (successful-processes (successful-supervisors (logger-entries logger))))
+    (dolist (entry (reverse (logger-entries logger)) (reverse entries))
+      (let ((source (getf entry ':source)))
+        (cond
+          ;; dryad logs
+          ((and (typep source 'dryad)
+                (or (algorithmic-entry? entry source)
+                    (debug-entry? entry source)))
+           (push entry entries))
+          ;; supervisor logs
+          ((and (typep source 'supervisor)
+                (member source successful-processes)
+                (or (algorithmic-entry? entry source)
+                    (debug-entry? entry source)))
+           (push entry entries))
+          ;; blossom logs
+          ((and (typep source 'blossom-node)
+                (or (algorithmic-entry? entry source)
+                    (debug-entry? entry source)))
+           (push entry entries)))))))
+
+(defun print-debug-log (&optional (logger *logger*))
+  "Shorthand for printing the results of `DEBUG-LOG'."
+  (print-log (debug-log logger)))

@@ -167,26 +167,25 @@
                       :target-node (if target-node-p target-node target-vertex)))
 
 (defmethod print-object ((object blossom-edge) stream)
-  (print-unreadable-object (object stream :type nil :identity nil)
-    (if (and (blossom-edge-source-node object)
+  (if (and (blossom-edge-source-node object)
              (blossom-edge-source-vertex object)
              (address= (blossom-edge-source-node object)
                        (blossom-edge-source-vertex object)))
         (format stream "~a-"
                 (blossom-edge-source-vertex object))
-        (format stream "[~a: ~a--]"
+        (format stream "[~a: ~a-]"
                 (blossom-edge-source-node object)
                 (blossom-edge-source-vertex object)))
-    (format stream "--")
-    (if (and (blossom-edge-target-vertex object)
-             (blossom-edge-target-node object)
-             (address= (blossom-edge-target-vertex object)
-                       (blossom-edge-target-node object)))
-        (format stream "->~a"
-                (blossom-edge-target-vertex object))
-        (format stream "[->~a :~a]"
-                (blossom-edge-target-vertex object)
-                (blossom-edge-target-node object)))))
+  (format stream "-")
+  (if (and (blossom-edge-target-vertex object)
+           (blossom-edge-target-node object)
+           (address= (blossom-edge-target-vertex object)
+                     (blossom-edge-target-node object)))
+      (format stream "->~a"
+              (blossom-edge-target-vertex object))
+      (format stream "[->~a :~a]"
+              (blossom-edge-target-vertex object)
+              (blossom-edge-target-node object))))
 
 (defun edge= (x y)
   (check-type x blossom-edge)
@@ -309,7 +308,7 @@ evalutes to
     ((node blossom-node) (message message-broadcast-pingability))
   "Changes the pingability of `NODE' (and children / petals) to `PING-TYPE'."
   (with-slots (ping-type) message
-    (log-entry :entry-type 'changing-pingability
+    (log-entry :entry-type ':changing-pingability
                :old-pingability (blossom-node-pingable node)
                :new-pingability ping-type)
     (setf (blossom-node-pingable node) ping-type)

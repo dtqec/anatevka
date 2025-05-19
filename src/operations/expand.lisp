@@ -114,7 +114,7 @@
      (send-message (message-reply-channel message)
                    (make-message-rpc-done)))
     (t
-     (log-entry :entry-type 'expanding-blossom
+     (log-entry :entry-type ':expanding-blossom
                 :blossom node
                 :petals (blossom-node-petals node)
                 :match-edge (blossom-node-match-edge node))
@@ -169,8 +169,8 @@
   ;;
   ;; it doesn't make sense to expand unmatched blossoms (but the dryad might try)
   (unless (blossom-node-match-edge node)
-    (log-entry :entry-type 'aborting-expand-blossom
-               :reason 'mateless-blossom
+    (log-entry :entry-type ':aborting-expand-blossom
+               :reason ':mateless-blossom
                :blossom node)
     (send-message reply-channel (make-message-rpc-done))
     (finish-handler))
@@ -388,6 +388,6 @@ In the right diagram, b0 is both the `root-node' and the `matched-node', because
   ;; NOTE: There's no data frame to pop.
   (when reply-channel
     (send-message reply-channel (make-message-rpc-done)))
-  (log-entry :entry-type 'blossom-extinguished
+  (log-entry :entry-type ':blossom-extinguished
              :blossom node)
   (setf (blossom-node-wilting node) t))

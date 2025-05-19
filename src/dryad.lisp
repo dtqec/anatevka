@@ -69,9 +69,10 @@ NOTE: In the basic implementation, these messages must be waiting for the DRYAD 
                                       :id node-id
                                       :debug? (process-debug? dryad)))
          (node-address (process-public-address node-process)))
-    (log-entry :entry-type 'handling-sow
+    (log-entry :entry-type ':handling-sow
                :address node-address
-               :id node-id)
+               :id node-id
+               :type (type-of node-process))
     (schedule node-process (now))
     (setf (gethash node-address (dryad-ids       dryad)) node-id
           (gethash node-address (dryad-sprouted? dryad)) nil)))
@@ -95,7 +96,7 @@ NOTE: In the basic implementation, these messages must be waiting for the DRYAD 
   "Handles a SPROUT message, indicating that a BLOSSOM-NODE has been matched (for the first time)."
   (with-slots (address) message
     (a:when-let ((id (gethash address (dryad-ids dryad))))
-      (log-entry :entry-type 'handling-sprout
+      (log-entry :entry-type ':handling-sprout
                  :address address
                  :id id)
       (setf (gethash address (dryad-sprouted? dryad)) t))))
@@ -191,7 +192,7 @@ NOTE: In the basic implementation, these messages must be waiting for the DRYAD 
 (define-process-upkeep ((dryad dryad)) (PROCESS-PAIRS pairs)
   "Iterates through `PAIRS' of addresses and sends corresponding WILT and REAP messages."
   (dolist (address-pair pairs)
-    (log-entry :entry-type 'processing-pair
+    (log-entry :entry-type ':processing-pair
                :pair address-pair)
     (send-message-batch #'make-message-wilt address-pair)
     (let ((id-pair (list (gethash (first address-pair) (dryad-ids dryad))
@@ -214,10 +215,10 @@ NOTE: In the basic implementation, these messages must be waiting for the DRYAD 
           ((children parent match-edge) topmost)
         (cond
           ((or children parent)
-           (log-entry :entry-type 'aborting-dryad-expansion
+           (log-entry :entry-type ':aborting-dryad-expansion
                       :reason 'tree-structure))
           (t
-           (log-entry :entry-type 'dryad-sending-expand
+           (log-entry :entry-type ':dryad-sending-expand
                       :sprout sprout
                       :topmost topmost
                       :match-edge match-edge)

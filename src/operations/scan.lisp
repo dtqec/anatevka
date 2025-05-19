@@ -258,7 +258,7 @@ When INTERNAL-ROOT-SET is supplied, discard HOLD recommendations which emanate f
          (internal-roots (or (message-scan-internal-roots scan-message)
                              (list local-root)))
          (strategy (slot-value scan-message 'strategy)))
-    (log-entry :entry-type 'starting-scan
+    (log-entry :entry-type ':starting-scan
                :deweight weight)
     (push (make-data-frame-scan :local-root local-root
                                 :local-blossom local-blossom
@@ -374,7 +374,7 @@ NOTE: this command is only installed when NODE is a vertex."
     (with-slots (recommendation root-bucket) pong
       (cond
         (reply-channel
-         (log-entry :entry-type 'pong-throw)
+         (log-entry :entry-type ':pong-throw)
          (if (blossom-node-wilting node)
              (send-message reply-channel (make-pong node))
              (send-message reply-channel pong)))
@@ -408,7 +408,7 @@ NOTE: this command is only installed when NODE is a vertex."
                                             :node-class (type-of node)
                                             :node-dryad (blossom-node-dryad node)
                                             :debug? (process-debug? node))))
-           (log-entry :entry-type 'spawn-supervisor
+           (log-entry :entry-type ':spawn-supervisor
                       :pong pong
                       :address (process-public-address supervisor))
            (push pong (process-data-stack supervisor))
@@ -452,7 +452,7 @@ NOTE: this command is only installed when NODE is a vertex."
                             :edges edges
                             :source-root root
                             :source-id id)))
-      (log-entry :entry-type 'handle-ping
+      (log-entry :entry-type ':handle-ping
                  :ping-type (type-of message)
                  :pingability (blossom-node-pingable node)
                  :vv-distance (vertex-vertex-distance (blossom-node-id node) id)
@@ -477,7 +477,7 @@ This handler is responsible for actually assigning a recommended-next-move for t
     ;; if we haven't yet started crawling up parent instead of pistil...
     (unless (blossom-edge-target-node last-edge)
       ;; ... include these internal weights
-      (log-entry :entry-type 'DECF-WEIGHT
+      (log-entry :entry-type ':decf-weight
                  :old-value (message-pong-weight pong)
                  :delta (blossom-node-internal-weight node))
       (decf (message-pong-weight pong)

@@ -66,4 +66,17 @@
    #:message-discovery-future-distance  ; ACCESSOR
    #:message-sprout-address             ; ACCESSOR
    #:message-wilting-address            ; ACCESSOR
-   ))
+   )
+
+  ;; logger.lisp
+  (:export
+   #:supervisor-logs-for-address        ; FUNCTION
+   #:successful-supervisors             ; FUNCTION
+   #:algorithmic-entry?                 ; GENERIC FUNCTION
+   #:reduced-log                        ; FUNCTION
+   #:print-reduced-log                  ; FUNCTION
+   #:debug-entry?                       ; GENERIC FUNCTION
+   #:debug-log                          ; FUNCTION
+   #:print-debug-log                    ; FUNCTION
+   )
+  )

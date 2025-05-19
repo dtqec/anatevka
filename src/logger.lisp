@@ -23,7 +23,7 @@
                             (source supervisor)
                             (entry-type (eql ':got-recommendation))
                             &optional (stream *standard-output*))
-  (format stream "~5f: [~a] got recommendation ~a ~a ~{~a~^ ~} from ~a~%"
+  (format stream "~5f: [~a] got ~a ~a ~{~a~^ ~} from ~a~%"
           (getf entry ':time)
           (getf entry ':source)
           (getf entry ':recommendation)
@@ -43,6 +43,16 @@
 
 (defmethod print-log-entry (entry
                             (source supervisor)
+                            (entry-type (eql ':rewinding))
+                            &optional (stream *standard-output*))
+  (format stream "~5f: [~a] rewinding roots ~a by ~a~%"
+          (getf entry ':time)
+          (getf entry ':source)
+          (getf entry ':roots)
+          (getf entry ':weight)))
+
+(defmethod print-log-entry (entry
+                            (source supervisor)
                             (entry-type (eql ':success))
                             &optional (stream *standard-output*))
   (format stream "~5f: [~a] closing with ~a~%"
@@ -55,7 +65,7 @@
                             (entry-type (eql ':set-up-blossom))
                             &optional (stream *standard-output*))
   "Log entry for when a blossom node finishes setting itself up."
-  (format stream "~5f: BLOSSOM ~a completed setting up (peduncle: ~a; match: ~a; children: ~{~a~^ ~}; parent: ~a; petals: ~{~a~^ ~}; pistil: ~a)~%"
+  (format stream "~5f: [~a] completed setting up (peduncle: ~a; match: ~a; children: ~{~a~^ ~}; parent: ~a; petals: ~{~a~^ ~}; pistil: ~a)~%"
           (getf entry ':time)
           (getf entry ':source)
           (getf entry ':peduncle-edge)
@@ -64,6 +74,35 @@
           (getf entry ':parent)
           (getf entry ':petals)
           (getf entry ':pistil)))
+
+(defmethod print-log-entry (entry
+                            (source blossom-node)
+                            (entry-type (eql ':blossom-extinguished))
+                            &optional (stream *standard-output*))
+  "Log entry for when a blossom node finishes setting itself up."
+  (format stream "~5f: [~a] expanded and extinguished"
+          (getf entry ':time)
+          (getf entry ':source)))
+
+(defmethod print-log-entry (entry
+                            (source dryad)
+                            (entry-type (eql ':dryad-sending-expand))
+                            &optional (stream *standard-output*))
+  (format stream "~5f: [~a] sending EXPAND to ~a (topmost: ~a; match-edge: ~a)~%"
+          (getf entry ':time)
+          (getf entry ':source)
+          (getf entry ':sprout)
+          (getf entry ':topmost)
+          (getf entry ':match-edge)))
+
+(defmethod print-log-entry (entry
+                            (source dryad)
+                            (entry-type (eql ':processing-pair))
+                            &optional (stream *standard-output*))
+  (format stream "~5f: [~a] processing match ~a~%"
+          (getf entry ':time)
+          (getf entry ':source)
+          (getf entry ':pair)))
 
 ;;;
 ;;; filtering routines
@@ -114,12 +153,20 @@
   (:documentation "Used to define which subset of `ENTRY' types emanating from `SOURCE' are critical to understanding algorithmic developments.")
   (:method (entry source) nil))
 
+(defmethod algorithmic-entry? (entry (source dryad))
+  (member (getf entry ':entry-type) '(:handling-sow
+                                      :dryad-sending-expand
+                                      :processing-pair)))
+
 (defmethod algorithmic-entry? (entry (source supervisor))
   (member (getf entry ':entry-type) '(:got-recommendation
                                       :success
                                       :reweighting
-                                      :rewinding
-                                      :multireweighting)))
+                                      :rewinding)))
+
+(defmethod algorithmic-entry? (entry (source blossom-node))
+  (member (getf entry ':entry-type) '(:set-up-blossom
+                                      :blossom-extinguished)))
 
 (defun reduced-log (&optional (logger *logger*))
   "Trims log messages to only ones of primary interest (see `ALGORITHMIC-ENTRY?')."
@@ -128,24 +175,18 @@
     (dolist (entry (reverse (logger-entries logger)) (reverse entries))
       (let ((source (getf entry ':source)))
         (cond
+          ;; dryad logs
+          ((and (typep source 'dryad)
+                (algorithmic-entry? entry source))
+           (push entry entries))
+          ;; supervisor logs
           ((and (typep source 'supervisor)
                 (member source successful-processes)
                 (algorithmic-entry? entry source))
            (push entry entries))
-          ((or (and (eql ':message-wilt (type-of (getf entry ':payload))))
-               (and (eql ':spawned-fresh-blossom (getf entry ':entry-type)))
-               (and (eql ':blossom-extinguished (getf entry ':entry-type))))
-           (push entry entries))
-          ;; dryad logs
-          ((and (typep (getf entry ':source) 'dryad)
-                ;; dryad sowing
-                (or (eql ':handling-sow (getf entry ':entry-type))
-                    (eql ':handling-sprout (getf entry ':entry-type))
-                    (eql ':processing-pair (getf entry ':entry-type))
-                    ;; dryad expansion
-                    (and (eql ':command (getf entry ':entry-type))
-                         (eql ':send-expand (getf entry ':command)))
-                    (eql ':dryad-sending-expand (getf entry ':entry-type))))
+          ;; blossom logs
+          ((and (typep source 'blossom-node)
+                (algorithmic-entry? entry source))
            (push entry entries)))))))
 
 (defun print-reduced-log (&optional (logger *logger*))

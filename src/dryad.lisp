@@ -192,11 +192,12 @@ NOTE: In the basic implementation, these messages must be waiting for the DRYAD 
 (define-process-upkeep ((dryad dryad)) (PROCESS-PAIRS pairs)
   "Iterates through `PAIRS' of addresses and sends corresponding WILT and REAP messages."
   (dolist (address-pair pairs)
-    (log-entry :entry-type ':processing-pair
-               :pair address-pair)
     (send-message-batch #'make-message-wilt address-pair)
     (let ((id-pair (list (gethash (first address-pair) (dryad-ids dryad))
                          (gethash (second address-pair) (dryad-ids dryad)))))
+      (log-entry :entry-type ':processing-pair
+                 :address-pair address-pair
+                 :id-pair id-pair)
       (send-message (dryad-match-address dryad)
                     (make-message-reap :ids id-pair)))))
 

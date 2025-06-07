@@ -78,18 +78,16 @@ After collecting the `HOLD-CLUSTER', we then `CHECK-PRIORITY' to determine if we
         (with-replies (replies :returned? returned?)
           (send-message-batch #'payload-constructor root-bucket)
           (when (some #'null replies)
-            (log-entry :entry-type ':aborting-multireweight
-                       :reason ':root-collection-failed
-                       :hold-cluster cluster
-                       :held-by-roots root-bucket)
+            (log-entry :entry-type ':aborting-multireweight-collection
+                       :source-root source-root
+                       :root-bucket root-bucket)
             (setf (process-lockable-aborting? supervisor) t)
             (finish-handler))
           (setf hold-cluster (reduce #'address-union (list* cluster replies)))
           ;; don't bother _multi_reweighting if we're in a cluster of 1.
           (when (endp (rest hold-cluster))
-            (log-entry :entry-type ':aborting-multireweight
-                       :reason ':cluster-of-one
-                       :hold-cluster hold-cluster)
+            (log-entry :entry-type ':aborting-multireweight-solo
+                       :source-root source-root)
             (setf (process-lockable-aborting? supervisor) t)
             (finish-handler))
           ;; otherwise, push the next set of commands onto the stack
@@ -106,12 +104,13 @@ After collecting the `HOLD-CLUSTER', we then `CHECK-PRIORITY' to determine if we
     (sync-rpc (make-message-id-query) (source-id source-root)
       (with-replies (replies :returned? returned?)
                     (send-message-batch #'make-message-id-query hold-cluster)
-        (let ((cluster-id (reduce #'min-id replies)))
-          (unless (equalp source-id (min-id source-id cluster-id))
-            (log-entry :entry-type ':aborting-multireweight
-                       :reason ':dont-have-priority
+        (let ((cluster-min-id (reduce #'min-id replies)))
+          (unless (equalp source-id (min-id source-id cluster-min-id))
+            (log-entry :entry-type ':aborting-multireweight-priority
                        :source-root source-root
-                       :hold-cluster hold-cluster)
+                       :source-id source-id
+                       :hold-cluster hold-cluster
+                       :cluster-min-id cluster-min-id)
             (setf (process-lockable-aborting? supervisor) t)))))))
 
 (define-process-upkeep ((supervisor supervisor)) (SET-HELD-BY-ROOTS hold-cluster)

@@ -63,7 +63,7 @@
     (setf root-bucket (remove-duplicates root-bucket :test #'address=))
     (process-continuation supervisor
                           `(CONVERGECAST-COLLECT-ROOTS ,source-root ,root-bucket)
-                          `(FINISH-MULTIREWEIGHT)
+                          `(FINISH-MULTIREWEIGHT ,source-root)
                           `(HALT))))
 
 (define-process-upkeep ((supervisor supervisor))
@@ -200,9 +200,12 @@ After collecting the `HOLD-CLUSTER', we then `CHECK-PRIORITY' to determine if we
                               `(CHECK-REWINDING ,hold-cluster ,internal-pong 0)
                               `(BROADCAST-UNLOCK))))))
 
-(define-process-upkeep ((supervisor supervisor)) (FINISH-MULTIREWEIGHT)
-  "Clean up after the local state of the multireweight operation."
-  (pop (process-data-stack supervisor)))
+(define-process-upkeep ((supervisor supervisor)) (FINISH-MULTIREWEIGHT source-root)
+  "Clean up supervisor-local state from the multireweight operation. Additionally unset `HELD-BY-ROOTS' for the `SOURCE-ROOT' if the operation was successful."
+  (pop (process-data-stack supervisor))
+  (unless (process-lockable-aborting? supervisor)
+    (sync-rpc (make-message-set :slots '(held-by-roots) :values `(,nil))
+        (held-by-roots source-root))))
 
 ;;;
 ;;; message definitions

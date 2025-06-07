@@ -15,7 +15,6 @@
 (define-process-upkeep ((node blossom-node))
     (aether::%FINISH-UNLOCK)
   (setf (blossom-node-pingable node) ':ALL)
-  (setf (blossom-node-held-by-roots node) nil)
   (when (process-lockable-done-signal node) ; signal := destroy? && ! aborting?
     (setf (blossom-node-parent node)    nil
           (blossom-node-children node)  nil

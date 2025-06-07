@@ -93,7 +93,6 @@ After collecting the `HOLD-CLUSTER', we then `CHECK-PRIORITY' to determine if we
           ;; otherwise, push the next set of commands onto the stack
           (process-continuation supervisor
                                 `(CHECK-PRIORITY ,source-root ,hold-cluster)
-                                `(SET-HELD-BY-ROOTS ,hold-cluster)
                                 `(MULTIREWEIGHT-BROADCAST-SCAN ,hold-cluster)))))))
 
 (define-process-upkeep ((supervisor supervisor))
@@ -112,16 +111,6 @@ After collecting the `HOLD-CLUSTER', we then `CHECK-PRIORITY' to determine if we
                        :hold-cluster hold-cluster
                        :cluster-min-id cluster-min-id)
             (setf (process-lockable-aborting? supervisor) t)))))))
-
-(define-process-upkeep ((supervisor supervisor)) (SET-HELD-BY-ROOTS hold-cluster)
-  "Sets the `held-by-roots' slot on every element in the `HOLD-CLUSTER' to equal the `HOLD-CLUSTER'. I don't think this is _strictly_ necessary, but could speed up some future convergecasts."
-  (unless (process-lockable-aborting? supervisor)
-    (log-entry :entry-type ':set-held-by-roots
-               :held-by-roots hold-cluster)
-    (flet ((payload-constructor ()
-             (make-message-set :slots '(held-by-roots) :values `(,hold-cluster))))
-      (with-replies (replies :returned? returned?)
-                    (send-message-batch #'payload-constructor hold-cluster)))))
 
 (define-process-upkeep ((supervisor supervisor))
     (MULTIREWEIGHT-BROADCAST-SCAN roots)

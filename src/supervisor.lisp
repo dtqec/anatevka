@@ -74,13 +74,14 @@ PONG: The PONG that this process received at its START."
 (define-process-upkeep ((supervisor supervisor)) (START)
   "Set up initial state: the stack frame and which procedure to branch on."
   (let ((pong (pop (process-data-stack supervisor))))
-    (with-slots (edges weight source-root target-root recommendation) pong
+    (with-slots (edges weight source-root target-root recommendation root-bucket) pong
       (log-entry :entry-type ':got-recommendation
                  :source-root source-root
                  :target-root target-root
                  :recommendation recommendation
                  :weight weight
-                 :edges edges)
+                 :edges edges
+                 :root-bucket root-bucket)
       (let ((frame (make-data-frame-supervisor :pong pong)))
         (push frame (process-data-stack supervisor))
         (cond

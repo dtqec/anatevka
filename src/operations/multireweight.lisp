@@ -63,7 +63,7 @@
     (setf root-bucket (remove-duplicates root-bucket :test #'address=))
     (process-continuation supervisor
                           `(CONVERGECAST-COLLECT-ROOTS ,source-root ,root-bucket)
-                          `(FINISH-MULTIREWEIGHT)
+                          `(FINISH-MULTIREWEIGHT ,source-root)
                           `(HALT))))
 
 (define-process-upkeep ((supervisor supervisor))
@@ -78,24 +78,21 @@ After collecting the `HOLD-CLUSTER', we then `CHECK-PRIORITY' to determine if we
         (with-replies (replies :returned? returned?)
           (send-message-batch #'payload-constructor root-bucket)
           (when (some #'null replies)
-            (log-entry :entry-type ':aborting-multireweight
-                       :reason ':root-collection-failed
-                       :hold-cluster cluster
-                       :held-by-roots root-bucket)
+            (log-entry :entry-type ':aborting-multireweight-collection
+                       :source-root source-root
+                       :root-bucket root-bucket)
             (setf (process-lockable-aborting? supervisor) t)
             (finish-handler))
           (setf hold-cluster (reduce #'address-union (list* cluster replies)))
           ;; don't bother _multi_reweighting if we're in a cluster of 1.
           (when (endp (rest hold-cluster))
-            (log-entry :entry-type ':aborting-multireweight
-                       :reason ':cluster-of-one
-                       :hold-cluster hold-cluster)
+            (log-entry :entry-type ':aborting-multireweight-solo
+                       :source-root source-root)
             (setf (process-lockable-aborting? supervisor) t)
             (finish-handler))
           ;; otherwise, push the next set of commands onto the stack
           (process-continuation supervisor
                                 `(CHECK-PRIORITY ,source-root ,hold-cluster)
-                                `(SET-HELD-BY-ROOTS ,hold-cluster)
                                 `(MULTIREWEIGHT-BROADCAST-SCAN ,hold-cluster)))))))
 
 (define-process-upkeep ((supervisor supervisor))
@@ -106,23 +103,14 @@ After collecting the `HOLD-CLUSTER', we then `CHECK-PRIORITY' to determine if we
     (sync-rpc (make-message-id-query) (source-id source-root)
       (with-replies (replies :returned? returned?)
                     (send-message-batch #'make-message-id-query hold-cluster)
-        (let ((cluster-id (reduce #'min-id replies)))
-          (unless (equalp source-id (min-id source-id cluster-id))
-            (log-entry :entry-type ':aborting-multireweight
-                       :reason ':dont-have-priority
+        (let ((cluster-min-id (reduce #'min-id replies)))
+          (unless (equalp source-id (min-id source-id cluster-min-id))
+            (log-entry :entry-type ':aborting-multireweight-priority
                        :source-root source-root
-                       :hold-cluster hold-cluster)
+                       :source-id source-id
+                       :hold-cluster hold-cluster
+                       :cluster-min-id cluster-min-id)
             (setf (process-lockable-aborting? supervisor) t)))))))
-
-(define-process-upkeep ((supervisor supervisor)) (SET-HELD-BY-ROOTS hold-cluster)
-  "Sets the `held-by-roots' slot on every element in the `HOLD-CLUSTER' to equal the `HOLD-CLUSTER'. I don't think this is _strictly_ necessary, but could speed up some future convergecasts."
-  (unless (process-lockable-aborting? supervisor)
-    (log-entry :entry-type ':set-held-by-roots
-               :held-by-roots hold-cluster)
-    (flet ((payload-constructor ()
-             (make-message-set :slots '(held-by-roots) :values `(,hold-cluster))))
-      (with-replies (replies :returned? returned?)
-                    (send-message-batch #'payload-constructor hold-cluster)))))
 
 (define-process-upkeep ((supervisor supervisor))
     (MULTIREWEIGHT-BROADCAST-SCAN roots)
@@ -201,9 +189,12 @@ After collecting the `HOLD-CLUSTER', we then `CHECK-PRIORITY' to determine if we
                               `(CHECK-REWINDING ,hold-cluster ,internal-pong 0)
                               `(BROADCAST-UNLOCK))))))
 
-(define-process-upkeep ((supervisor supervisor)) (FINISH-MULTIREWEIGHT)
-  "Clean up after the local state of the multireweight operation."
-  (pop (process-data-stack supervisor)))
+(define-process-upkeep ((supervisor supervisor)) (FINISH-MULTIREWEIGHT source-root)
+  "Clean up supervisor-local state from the multireweight operation. Additionally unset `HELD-BY-ROOTS' for the `SOURCE-ROOT' if the operation was successful."
+  (pop (process-data-stack supervisor))
+  (unless (process-lockable-aborting? supervisor)
+    (sync-rpc (make-message-set :slots '(held-by-roots) :values `(,nil))
+        (held-by-roots source-root))))
 
 ;;;
 ;;; message definitions

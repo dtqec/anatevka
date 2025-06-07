@@ -95,7 +95,8 @@ d(B, D) = 4 and d(C, E) = 4
                   :positive? nil)
                (F :id (id 10 0)
                   :internal-weight 2
-                  :children (list (vv-edge F E))))
+                  :children (list (vv-edge F E))
+                  :held-by-roots (list C)))
             (is (tree-equalp original-tree target-tree))))))))
 
 (deftest test-supervisor-multireweight-interlock-mirrored ()
@@ -189,7 +190,8 @@ d(B, D) = 4 and d(C, E) = 4
                   :positive? nil)
                (F :id (id 10 0)
                   :internal-weight 2
-                  :children (list (vv-edge F E))))
+                  :children (list (vv-edge F E))
+                  :held-by-roots (list A)))
             (is (tree-equalp original-tree target-tree))))))))
 
 (deftest test-supervisor-multireweight-outerlock-aligned ()
@@ -269,7 +271,8 @@ d(C, D) = 4
                   :positive? nil)
                (C :id (id 6 0)
                   :children (list (vv-edge C E))
-                  :internal-weight 2)
+                  :internal-weight 2
+                  :held-by-roots (list A))
                (D :id (id 4 2)
                   :internal-weight 2
                   :match-edge (vv-edge D B)
@@ -377,7 +380,8 @@ d(C, D) = 4
                   :positive? nil)
                (F :id (id 10 0)
                   :children (list (vv-edge F E))
-                  :internal-weight 2))
+                  :internal-weight 2
+                  :held-by-roots (list A)))
             (is (tree-equalp original-tree target-tree))))))))
 
 (deftest test-supervisor-multireweight-full-external-rec ()
@@ -478,7 +482,8 @@ rather than half of its weight (like we do for inter-tree recommendations).
                   :positive? nil)
                (F :id (id 10 0)
                   :internal-weight 1
-                  :children (list (vv-edge F E)))
+                  :children (list (vv-edge F E))
+                  :held-by-roots (list A))
                (G :id (id 11 0)))
             (is (tree-equalp original-tree target-tree))))))))
 
@@ -577,7 +582,8 @@ reweight by 2, even though that is what the `AUGMENT' recommends, because our
                   :positive? nil)
                (C :id (id 10 0)
                   :internal-weight 2
-                  :children (list (vv-edge C E)))
+                  :children (list (vv-edge C E))
+                  :held-by-roots (list A))
                (D :id (id 6 4)
                   :internal-weight 2
                   :match-edge (vv-edge D B)
@@ -699,7 +705,8 @@ The point of this is to show that simultaneous root-set aggregation in multirewe
                   :positive? nil)
                (F :id (id 10 0)
                   :internal-weight 2
-                  :children (list (vv-edge F E))))
+                  :children (list (vv-edge F E))
+                  :held-by-roots (list C)))
             (is (tree-equalp original-tree target-tree))))))))
 
 (deftest test-supervisor-multireweight-simultaneous-staircase ()
@@ -827,7 +834,8 @@ The point of this is to show that we can successfully gather a root set of size 
                   :parent (vv-edge C B))
                (D :id (id 2 4)
                   :internal-weight 2
-                  :children (list (vv-edge D E)))
+                  :children (list (vv-edge D E))
+                  :held-by-roots (list A I))
                (E :id (id 4 4)
                   :children (list (vv-edge E F))
                   :match-edge (vv-edge E F)
@@ -848,7 +856,8 @@ The point of this is to show that we can successfully gather a root set of size 
                   :positive? nil)
                (I :id (id 8 2)
                   :internal-weight 2
-                  :children (list (vv-edge I H)))
+                  :children (list (vv-edge I H))
+                  :held-by-roots (list D L))
                (J :id (id 6 0)
                   :internal-weight 2
                   :match-edge (vv-edge J K)
@@ -860,7 +869,8 @@ The point of this is to show that we can successfully gather a root set of size 
                   :positive? nil)
                (L :id (id 10 0)
                   :internal-weight 2
-                  :children (list (vv-edge L K))))
+                  :children (list (vv-edge L K))
+                  :held-by-roots (list I)))
             (is (tree-equalp original-tree target-tree))))))))
 
 (deftest test-supervisor-multireweight-lower-priority ()
@@ -1080,7 +1090,8 @@ The point of this is to show that simultaneous reweighting and rewinding during 
                   :parent (vv-edge C B))
                (D :id (id 2 0)
                   :internal-weight 1
-                  :children (list (vv-edge D E)))
+                  :children (list (vv-edge D E))
+                  :held-by-roots (list A))
                (E :id (id 4 0)
                   :children (list (vv-edge E F))
                   :internal-weight 1
@@ -1116,7 +1127,8 @@ The point of this is to show that simultaneous reweighting and rewinding during 
                   :positive? nil)
                (L :id (id 14 2)
                   :internal-weight 1
-                  :children (list (vv-edge L K))))
+                  :children (list (vv-edge L K))
+                  :held-by-roots (list I)))
             (is (tree-equalp original-tree target-tree))))))))
 
 (deftest test-supervisor-multireweight-simultaneous-rewind-non-integer ()
@@ -1238,7 +1250,8 @@ The point of this is to show that simultaneous reweighting and rewinding during 
                   :parent (vv-edge C B))
                (D :id (id 1 0)
                   :internal-weight 0.5
-                  :children (list (vv-edge D E)))
+                  :children (list (vv-edge D E))
+                  :held-by-roots (list A))
                (E :id (id 2 0)
                   :internal-weight 0.5
                   :children (list (vv-edge E F))
@@ -1274,7 +1287,8 @@ The point of this is to show that simultaneous reweighting and rewinding during 
                   :positive? nil)
                (L :id (id 7 1)
                   :internal-weight 0.5
-                  :children (list (vv-edge L K)))
+                  :children (list (vv-edge L K))
+                  :held-by-roots (list I))
                (BOUNDARY :id (id -1 0)
                          :match-edge (vv-edge B A)
                          :parent (vv-edge B A)))
@@ -1287,13 +1301,13 @@ The point of this is to show that simultaneous reweighting and rewinding during 
 (deftest test-supervisor-multireweight-2-clusters ()
   "Checks the transformation
 
- 0  2  0              0  2  0     0  0  0              1  1  1
+ 0  2  0              0  2  0     0  2  0              1  1  1
  +  -  +              +  -  +     +  -  +              +  -  +
  A->B=>C              L<=M<-N     A->B=>C              L<=M<-N
                               -->
     D->E=>F  G<=H<-I<=J<-K           D->E=>F  G<=H<-I<=J<-K
     +  -  +  +  -  +  -  +           +  -  +  +  -  +  -  +
-    0  2  0  0  2  0  2  0           0  0  0  1  1  1  1  1
+    0  2  0  0  2  0  2  0           0  2  0  1  1  1  1  1
 
 d(B, D), d(J, L) = 2 and d(F, G) = 1
 "
@@ -1396,7 +1410,8 @@ d(B, D), d(J, L) = 2 and d(F, G) = 1
           (simulate-until-dead simulation supervisor-right)
           (blossom-let (target-tree :dryad dryad-address)
               ((A :id (id 0 2)
-                  :children (list (vv-edge A B)))
+                  :children (list (vv-edge A B))
+                  :held-by-roots (list D))
                (B :id (id 2 2)
                   :children (list (vv-edge B C))
                   :internal-weight 2
@@ -1407,7 +1422,8 @@ d(B, D), d(J, L) = 2 and d(F, G) = 1
                   :match-edge (vv-edge C B)
                   :parent (vv-edge C B))
                (D :id (id 2 0)
-                  :children (list (vv-edge D E)))
+                  :children (list (vv-edge D E))
+                  :held-by-roots (list A))
                (E :id (id 4 0)
                   :children (list (vv-edge E F))
                   :internal-weight 2
@@ -1453,7 +1469,8 @@ d(B, D), d(J, L) = 2 and d(F, G) = 1
                   :positive? nil)
                (N :id (id 17 2)
                   :internal-weight 1
-                  :children (list (vv-edge N M))))
+                  :children (list (vv-edge N M))
+                  :held-by-roots (list K)))
             (is (tree-equalp original-tree target-tree))))))))
 
 (deftest test-supervisor-multireweight-3-clusters ()
@@ -1609,7 +1626,8 @@ d(B, D), d(H, J), d(N, P) = 2 and d(F, G), d(L, M) = 1
                   :parent (vv-edge C B))
                (D :id (id 2 0)
                   :internal-weight 1
-                  :children (list (vv-edge D E)))
+                  :children (list (vv-edge D E))
+                  :held-by-roots (list A))
                (E :id (id 4 0)
                   :children (list (vv-edge E F))
                   :internal-weight 1
@@ -1645,10 +1663,12 @@ d(B, D), d(H, J), d(N, P) = 2 and d(F, G), d(L, M) = 1
                   :positive? nil)
                (L :id (id 13 2)
                   :internal-weight 0
-                  :children (list (vv-edge L K)))
+                  :children (list (vv-edge L K))
+                  :held-by-roots (list I))
                (M :id (id 14 2)
                   :internal-weight 0
-                  :children (list (vv-edge M N)))
+                  :children (list (vv-edge M N))
+                  :held-by-roots (list P))
                (N :id (id 16 2)
                   :children (list (vv-edge N O))
                   :internal-weight 2
@@ -1661,7 +1681,8 @@ d(B, D), d(H, J), d(N, P) = 2 and d(F, G), d(L, M) = 1
                   :parent (vv-edge O N))
                (P :id (id 16 0)
                   :internal-weight 0
-                  :children (list (vv-edge P Q)))
+                  :children (list (vv-edge P Q))
+                  :held-by-roots (list M))
                (Q :id (id 18 0)
                   :children (list (vv-edge Q R))
                   :internal-weight 2
@@ -1861,7 +1882,8 @@ d(B, D), d(H, J), d(N, P), d(U, W) = 2 and d(F, G), d(R, S) = 1 and d(L, M) = 2
                   :parent (vv-edge C B))
                (D :id (id 2 0)
                   :internal-weight 1
-                  :children (list (vv-edge D E)))
+                  :children (list (vv-edge D E))
+                  :held-by-roots (list A))
                (E :id (id 4 0)
                   :children (list (vv-edge E F))
                   :internal-weight 1
@@ -1884,7 +1906,8 @@ d(B, D), d(H, J), d(N, P), d(U, W) = 2 and d(F, G), d(R, S) = 1 and d(L, M) = 2
                   :positive? nil)
                (I :id (id 11 0)
                   :internal-weight 0
-                  :children (list (vv-edge I H)))
+                  :children (list (vv-edge I H))
+                  :held-by-roots (list L))
                (J :id (id 9 2)
                   :internal-weight 0
                   :match-edge (vv-edge J K)
@@ -1897,10 +1920,12 @@ d(B, D), d(H, J), d(N, P), d(U, W) = 2 and d(F, G), d(R, S) = 1 and d(L, M) = 2
                   :positive? nil)
                (L :id (id 13 2)
                   :internal-weight 0
-                  :children (list (vv-edge L K)))
+                  :children (list (vv-edge L K))
+                  :held-by-roots (list I))
                (M :id (id 15 2)
                   :internal-weight 0
-                  :children (list (vv-edge M N)))
+                  :children (list (vv-edge M N))
+                  :held-by-roots (list P))
                (N :id (id 17 2)
                   :children (list (vv-edge N O))
                   :internal-weight 2
@@ -1913,7 +1938,8 @@ d(B, D), d(H, J), d(N, P), d(U, W) = 2 and d(F, G), d(R, S) = 1 and d(L, M) = 2
                   :parent (vv-edge O N))
                (P :id (id 17 0)
                   :internal-weight 0
-                  :children (list (vv-edge P Q)))
+                  :children (list (vv-edge P Q))
+                  :held-by-roots (list M))
                (Q :id (id 19 0)
                   :children (list (vv-edge Q R))
                   :internal-weight 2
@@ -1949,5 +1975,6 @@ d(B, D), d(H, J), d(N, P), d(U, W) = 2 and d(F, G), d(R, S) = 1 and d(L, M) = 2
                   :positive? nil)
                (Y :id (id 28 2)
                   :internal-weight 1
-                  :children (list (vv-edge Y X))))
+                  :children (list (vv-edge Y X))
+                  :held-by-roots (list V)))
             (is (tree-equalp original-tree target-tree))))))))

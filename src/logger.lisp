@@ -12,10 +12,9 @@
                             (source dryad)
                             (entry-type (eql ':handling-sow))
                             &optional (stream *standard-output*))
-  (format stream "~5f: [~a] sowed ~a ~a at ~a~%"
+  (format stream "~5f: [~a] sowed ~a at ~a~%"
           (getf entry ':time)
           (getf entry ':source)
-          (getf entry ':type)
           (getf entry ':address)
           (getf entry ':id)))
 
@@ -23,19 +22,28 @@
                             (source supervisor)
                             (entry-type (eql ':got-recommendation))
                             &optional (stream *standard-output*))
-  (format stream "~5f: [~a] got ~a ~a ~{~a~^ ~} from ~a~%"
-          (getf entry ':time)
-          (getf entry ':source)
-          (getf entry ':recommendation)
-          (getf entry ':weight)
-          (getf entry ':edges)
-          (getf entry ':source-root)))
+  (if (eql ':hold (getf entry ':recommendation))
+      (format stream "~5f: [~a] got ~a ~a ~{~a~^ ~} from ~a w/ root-bucket ~a~%"
+              (getf entry ':time)
+              (getf entry ':source)
+              (getf entry ':recommendation)
+              (getf entry ':weight)
+              (getf entry ':edges)
+              (getf entry ':source-root)
+              (getf entry ':root-bucket))
+      (format stream "~5f: [~a] got ~a ~a ~{~a~^ ~} from ~a~%"
+              (getf entry ':time)
+              (getf entry ':source)
+              (getf entry ':recommendation)
+              (getf entry ':weight)
+              (getf entry ':edges)
+              (getf entry ':source-root))))
 
 (defmethod print-log-entry (entry
                             (source supervisor)
                             (entry-type (eql ':reweighting))
                             &optional (stream *standard-output*))
-  (format stream "~5f: [~a] reweighting roots ~a by ~a~%"
+  (format stream "~5f: [~a] reweighting roots (~{~a~^ ~}) by ~a~%"
           (getf entry ':time)
           (getf entry ':source)
           (getf entry ':roots)
@@ -45,11 +53,11 @@
                             (source supervisor)
                             (entry-type (eql ':rewinding))
                             &optional (stream *standard-output*))
-  (format stream "~5f: [~a] rewinding roots ~a by ~a~%"
+  (format stream "~5f: [~a] rewinding roots (~{~a~^ ~}) by ~a~%"
           (getf entry ':time)
           (getf entry ':source)
           (getf entry ':roots)
-          (getf entry ':weight)))
+          (getf entry ':amount)))
 
 (defmethod print-log-entry (entry
                             (source supervisor)
@@ -80,7 +88,7 @@
                             (entry-type (eql ':blossom-extinguished))
                             &optional (stream *standard-output*))
   "Log entry for when a blossom node finishes setting itself up."
-  (format stream "~5f: [~a] expanded and extinguished"
+  (format stream "~5f: [~a] expanded and extinguished~%"
           (getf entry ':time)
           (getf entry ':source)))
 
@@ -99,10 +107,51 @@
                             (source dryad)
                             (entry-type (eql ':processing-pair))
                             &optional (stream *standard-output*))
-  (format stream "~5f: [~a] processing match ~a~%"
+  (format stream "~5f: [~a] processing match (~{~a~^ ~}) with ids (~{~a~^ ~})~%"
           (getf entry ':time)
           (getf entry ':source)
-          (getf entry ':pair)))
+          (getf entry ':address-pair)
+          (getf entry ':id-pair)))
+
+(defmethod print-log-entry (entry
+                            (source supervisor)
+                            (entry-type (eql ':aborting-multireweight-collection))
+                            &optional (stream *standard-output*))
+  (format stream "~5f: [~a] aborting ~a's MRW bc root collection failed for root-bucket (~{~a~^ ~})~%"
+          (getf entry ':time)
+          (getf entry ':source)
+          (getf entry ':source-root)
+          (getf entry ':root-bucket)))
+
+(defmethod print-log-entry (entry
+                            (source supervisor)
+                            (entry-type (eql ':aborting-multireweight-solo))
+                            &optional (stream *standard-output*))
+  (format stream "~5f: [~a] aborting ~a's MRW bc it's the only root in the cluster~%"
+          (getf entry ':time)
+          (getf entry ':source)
+          (getf entry ':source-root)))
+
+(defmethod print-log-entry (entry
+                            (source supervisor)
+                            (entry-type (eql ':aborting-multireweight-priority))
+                            &optional (stream *standard-output*))
+  (format stream "~5f: [~a] aborting ~a (~a)'s MRW bc priority vs. hold-cluster (~{~a~^ ~}) w/ min-id ~a~%"
+          (getf entry ':time)
+          (getf entry ':source)
+          (getf entry ':source-root)
+          (getf entry ':source-id)
+          (getf entry ':hold-cluster)
+          (getf entry ':cluster-min-id)))
+
+(defmethod print-log-entry (entry
+                            (source supervisor)
+                            (entry-type (eql ':set-held-by-roots))
+                            &optional (stream *standard-output*))
+  (format stream "~5f: [~a] setting held-by-roots of hold-cluster (~{~a~^ ~}) to itself~%"
+          (getf entry ':time)
+          (getf entry ':source)
+          (getf entry ':held-by-roots)))
 
 ;;;
 ;;; filtering routines
@@ -198,7 +247,10 @@
   (:method (entry source) nil))
 
 (defmethod debug-entry? (entry (source supervisor))
-  (member (getf entry ':entry-type) '(:aborting-multireweight)))
+  (member (getf entry ':entry-type) '(:aborting-multireweight-collection
+                                      :aborting-multireweight-priority
+                                      :aborting-multireweight-solo
+                                      :set-held-by-roots)))
 
 (defun debug-log (&optional (logger *logger*))
   "Trims log messages to only ones useful to debugging (see `DEBUG-ENTRY?')."
@@ -214,7 +266,6 @@
            (push entry entries))
           ;; supervisor logs
           ((and (typep source 'supervisor)
-                (member source successful-processes)
                 (or (algorithmic-entry? entry source)
                     (debug-entry? entry source)))
            (push entry entries))

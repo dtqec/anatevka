@@ -208,7 +208,7 @@ After collecting the `HOLD-CLUSTER', we then `CHECK-PRIORITY' to determine if we
 ;;; message handlers
 ;;;
 
-(define-convergecast-handler handle-message-convergecast-collect-roots
+(define-convergecast-subordinate handle-message-convergecast-collect-roots
     ((node blossom-node) (message message-convergecast-collect-roots))
   "Check to see if we're held. If not, `RETURN-FROM-CAST' and send back up a NIL. If we are held, add ourselves to the `HOLD-CLUSTER'. Additionally, if we are held by `NEW-ROOTS' that aren't currently in the cluster, forward this message along to them to continue gathering roots. Finally, send the aggregated cluster back to the sender."
   (with-slots (hold-cluster reply-channel) message

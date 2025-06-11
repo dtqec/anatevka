@@ -289,10 +289,15 @@ evalutes to
                    (make-message-rpc-done :result (blossom-node-id node))))
     (t
      ;; NOTE: this could be a broadcast call if aether subordinates subclassed that
-     (with-replies (replies)
+     (with-replies (replies :returned? returned?)
                    (send-message-batch #'make-message-id-query
                                        (mapcar #'blossom-edge-target-node
                                                (blossom-node-petals node)))
+       ;; we gracefully handle RTSes because there's a chance that previously-
+       ;; wilted nodes have already halted. in this case, we remove those
+       ;; replies as they will break the logic below
+       (when returned?
+         (setf replies (remove nil replies)))
        (send-message (message-reply-channel message)
                      (make-message-rpc-done
                       :result (reduce #'min-id (rest replies))))))))

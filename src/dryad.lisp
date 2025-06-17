@@ -75,7 +75,8 @@ NOTE: In the basic implementation, these messages must be waiting for the DRYAD 
                :type (type-of node-process))
     (schedule node-process (now))
     (setf (gethash node-address (dryad-ids       dryad)) node-id
-          (gethash node-address (dryad-sprouted? dryad)) nil)))
+          (gethash node-address (dryad-sprouted? dryad)) nil)
+    node-address))
 
 (define-message-handler handler-message-discover
     ((dryad dryad) (message message-discover))

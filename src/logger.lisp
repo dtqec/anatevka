@@ -146,6 +146,18 @@
 
 (defmethod print-log-entry (entry
                             (source supervisor)
+                            (entry-type (eql ':aborting-multireweight-negative-pong))
+                            &optional (stream *standard-output*))
+  (format stream "~5f: [~a] aborting ~a (~a)'s MRW bc the cluster scan returned a negative-weight pong ~a for hold-cluster (~{~a~^ ~})~%"
+          (getf entry ':time)
+          (getf entry ':source)
+          (getf entry ':source-root)
+          (getf entry ':source-id)
+          (getf entry ':internal-pong)
+          (getf entry ':hold-cluster)))
+
+(defmethod print-log-entry (entry
+                            (source supervisor)
                             (entry-type (eql ':set-held-by-roots))
                             &optional (stream *standard-output*))
   (format stream "~5f: [~a] setting held-by-roots of hold-cluster (~{~a~^ ~}) to itself~%"
@@ -248,6 +260,7 @@
 
 (defmethod debug-entry? (entry (source supervisor))
   (member (getf entry ':entry-type) '(:aborting-multireweight-collection
+                                      :aborting-multireweight-negative-pong
                                       :aborting-multireweight-priority
                                       :aborting-multireweight-solo
                                       :set-held-by-roots)))

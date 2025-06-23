@@ -125,12 +125,22 @@ After collecting the `HOLD-CLUSTER', we then `CHECK-PRIORITY' to determine if we
                        :message-unpacker identity)
                       (send-message-batch #'payload-constructor roots)
           (loop :for reply :in replies :unless (null reply)
-                :do (assert (not (minusp (message-pong-weight reply))))
-                    (setf internal-pong
+                :do (setf internal-pong
+                          ;; internal-roots?
                           (unify-pongs internal-pong reply)))
           (log-entry :entry-type ':multireweight-broadcast-scan-result
                      :hold-cluster roots
                      :internal-pong internal-pong)
+          ;; if our best recommendation is negative, we abort the MRW
+          (when (minusp (message-pong-weight internal-pong))
+            (with-slots (source-root source-id) internal-pong
+              (log-entry :entry-type ':aborting-multireweight-negative-pong
+                         :source-root source-root
+                         :source-id source-id
+                         :internal-pong internal-pong
+                         :hold-cluster roots)
+              (setf (process-lockable-aborting? supervisor) t)
+              (finish-handler)))
           (process-continuation supervisor
                                 `(GATHER-TARGETS-MULTIREWEIGHT)
                                 `(START-INNER-MULTIREWEIGHT)))))))

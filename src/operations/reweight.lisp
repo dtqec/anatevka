@@ -94,20 +94,17 @@
                    :source-root source-root
                    :target-root target-root
                    :targets targets)
-        (cond
-          ((null target-root)
-           (push source-root targets))
-          (t
-           (sync-rpc (make-message-convergecast-collect-roots)
-               (target-cluster target-root :returned? returned?)
-             (setf targets (remove-duplicates
-                            (append (list source-root target-root) target-cluster)
-                            :test #'address=))
-             (log-entry :entry-type ':collected-target-cluster
-                        :source-root source-root
-                        :target-root target-root
-                        :target-cluster target-cluster
-                        :targets targets))))))))
+        (unless (null target-root)
+          (sync-rpc (make-message-convergecast-collect-roots)
+              (target-cluster target-root :returned? returned?)
+            (setf targets (remove-duplicates
+                           (append (list source-root target-root) target-cluster)
+                           :test #'address=))
+            (log-entry :entry-type ':collected-target-cluster
+                       :source-root source-root
+                       :target-root target-root
+                       :target-cluster target-cluster
+                       :targets targets)))))))
 
 (define-process-upkeep ((supervisor supervisor)) (START-INNER-REWEIGHT)
   "The reweight 'critical section':

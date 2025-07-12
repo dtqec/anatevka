@@ -73,7 +73,7 @@
    #:supervisor-logs-for-address        ; FUNCTION
    #:successful-supervisors             ; FUNCTION
    #:algorithmic-entry?                 ; GENERIC FUNCTION
-   #:reduced-log                        ; FUNCTION
+   #:remove-unsuccessful-supervisors    ; FUNCTION
    #:print-reduced-log                  ; FUNCTION
    #:debug-entry?                       ; GENERIC FUNCTION
    #:debug-log                          ; FUNCTION

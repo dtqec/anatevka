@@ -72,11 +72,7 @@
   (:export
    #:supervisor-logs-for-address        ; FUNCTION
    #:successful-supervisors             ; FUNCTION
-   #:algorithmic-entry?                 ; GENERIC FUNCTION
    #:remove-unsuccessful-supervisors    ; FUNCTION
    #:print-reduced-log                  ; FUNCTION
-   #:debug-entry?                       ; GENERIC FUNCTION
-   #:debug-log                          ; FUNCTION
-   #:print-debug-log                    ; FUNCTION
    )
   )

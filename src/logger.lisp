@@ -202,25 +202,6 @@
         :finally (return (union (set-difference positive-processes self-held-processes)
                                 (set-difference start-processes done-processes)))))
 
-(defgeneric algorithmic-entry? (entry source)
-  (:documentation "Used to define which subset of `ENTRY' types emanating from `SOURCE' are critical to understanding algorithmic developments.")
-  (:method (entry source) nil))
-
-(defmethod algorithmic-entry? (entry (source dryad))
-  (member (getf entry ':entry-type) '(:handling-sow
-                                      :dryad-sending-expand
-                                      :processing-pair)))
-
-(defmethod algorithmic-entry? (entry (source supervisor))
-  (member (getf entry ':entry-type) '(:got-recommendation
-                                      :success
-                                      :reweighting
-                                      :rewinding)))
-
-(defmethod algorithmic-entry? (entry (source blossom-node))
-  (member (getf entry ':entry-type) '(:set-up-blossom
-                                      :blossom-extinguished)))
-
 (defun remove-unsuccessful-supervisors (&optional (entries (logger-entries *logger*)))
   "Trims log `ENTRIES' by removing entries from unsuccessful SUPERVISORs."
   (let (trimmed-entries
@@ -230,6 +211,10 @@
         (unless (and (typep source 'supervisor)
                      (not (member source successful-processes)))
           (push entry trimmed-entries))))))
+
+;;
+;; printer functions
+;;
 
 (defun print-reduced-log (&key (entries (logger-entries *logger*))
                                (stream *standard-output*)
@@ -242,53 +227,3 @@
              :start-time start-time
              :end-time end-time
              :log-level log-level))
-
-(defgeneric debug-entry? (entry source)
-  (:documentation "Used to define which subset of `ENTRY' types emanating from `SOURCE' are helpful for debugging.")
-  (:method (entry source) nil))
-
-(defmethod debug-entry? (entry (source supervisor))
-  (member (getf entry ':entry-type) '(:aborting-multireweight-collection
-                                      :aborting-multireweight-negative-pong
-                                      :aborting-multireweight-priority
-                                      :aborting-multireweight-solo)))
-
-(defun debug-log (&optional (entries (logger-entries *logger*)))
-  "Trims log `ENTRIES' to only ones useful to debugging (see `DEBUG-ENTRY?')."
-  (let (trimmed-entries)
-    (dolist (entry entries (reverse trimmed-entries))
-      (let ((source (getf entry ':source)))
-        (cond
-          ;; dryad logs
-          ((and (typep source 'dryad)
-                (or (algorithmic-entry? entry source)
-                    (debug-entry? entry source)))
-           (push entry trimmed-entries))
-          ;; supervisor logs
-          ((and (typep source 'supervisor)
-                (or (algorithmic-entry? entry source)
-                    (debug-entry? entry source)))
-           (push entry trimmed-entries))
-          ;; blossom logs
-          ((and (typep source 'blossom-node)
-                (or (algorithmic-entry? entry source)
-                    (debug-entry? entry source)))
-           (push entry trimmed-entries)))))))
-
-(defun print-debug-log (&key (entries (logger-entries *logger*))
-                             (start-time nil start-time-p)
-                             (end-time nil end-time-p))
-  "Shorthand for printing the results of `DEBUG-LOG'. Can optionally provide a `START-TIME' and/or `END-TIME' to further trim the `DEBUG-LOG' entries."
-  (cond
-    ((and start-time-p end-time-p)
-     (print-log (trim-log :entries (debug-log entries)
-                          :start-time start-time
-                          :end-time end-time)))
-    (start-time-p
-     (print-log (trim-log :entries (debug-log entries)
-                          :start-time start-time)))
-    (end-time-p
-     (print-log (trim-log :entries (debug-log entries)
-                          :end-time end-time)))
-    (t
-     (print-log (debug-log entries)))))

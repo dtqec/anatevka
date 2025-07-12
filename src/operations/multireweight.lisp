@@ -79,6 +79,7 @@ After collecting the `HOLD-CLUSTER', we then `CHECK-PRIORITY' to determine if we
           (send-message-batch #'payload-constructor root-bucket)
           (when (some #'null replies)
             (log-entry :entry-type ':aborting-multireweight-collection
+                       :log-level 1
                        :source-root source-root
                        :root-bucket root-bucket)
             (setf (process-lockable-aborting? supervisor) t)
@@ -87,6 +88,7 @@ After collecting the `HOLD-CLUSTER', we then `CHECK-PRIORITY' to determine if we
           ;; don't bother _multi_reweighting if we're in a cluster of 1.
           (when (endp (rest hold-cluster))
             (log-entry :entry-type ':aborting-multireweight-solo
+                       :log-level 1
                        :source-root source-root)
             (setf (process-lockable-aborting? supervisor) t)
             (finish-handler))
@@ -106,6 +108,7 @@ After collecting the `HOLD-CLUSTER', we then `CHECK-PRIORITY' to determine if we
         (let ((cluster-min-id (reduce #'min-id replies)))
           (unless (equalp source-id (min-id source-id cluster-min-id))
             (log-entry :entry-type ':aborting-multireweight-priority
+                       :log-level 1
                        :source-root source-root
                        :source-id source-id
                        :hold-cluster hold-cluster
@@ -135,6 +138,7 @@ After collecting the `HOLD-CLUSTER', we then `CHECK-PRIORITY' to determine if we
           (when (minusp (message-pong-weight internal-pong))
             (with-slots (source-root source-id) internal-pong
               (log-entry :entry-type ':aborting-multireweight-negative-pong
+                         :log-level 1
                          :source-root source-root
                          :source-id source-id
                          :internal-pong internal-pong

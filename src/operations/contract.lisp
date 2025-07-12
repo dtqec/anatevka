@@ -396,6 +396,7 @@ If we have a non-null peduncle edge (F -> C above), then we need to tell its sou
           ;; lastly, unpause our new blossom so that it can SCAN
           (blossom-node-paused? node)        nil)
     (log-entry :entry-type ':set-up-blossom
+               :log-level 2
                :peduncle-edge peduncle-edge
                :match-edge (blossom-node-match-edge node)
                :children (blossom-node-children node)

@@ -389,5 +389,6 @@ In the right diagram, b0 is both the `root-node' and the `matched-node', because
   (when reply-channel
     (send-message reply-channel (make-message-rpc-done)))
   (log-entry :entry-type ':blossom-extinguished
+             :log-level 2
              :blossom node)
   (setf (blossom-node-wilting node) t))

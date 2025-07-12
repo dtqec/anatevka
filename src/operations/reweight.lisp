@@ -164,6 +164,7 @@
   "Instruct some `ROOTS' to reweight their trees by `WEIGHT'."
   (unless (process-lockable-aborting? supervisor)
     (log-entry :entry-type ':reweighting
+               :log-level 2
                :weight weight
                :roots roots)
     (flet ((payload-constructor ()
@@ -221,6 +222,7 @@
                   (setf rewinding-amount (/ rewinding-amount 2)))
                 (let ((new-carry (- carry rewinding-amount)))
                   (log-entry :entry-type ':rewinding
+                             :log-level 2
                              :roots roots
                              :amount rewinding-amount
                              :overall new-carry

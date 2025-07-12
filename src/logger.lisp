@@ -23,7 +23,7 @@
                             (entry-type (eql ':got-recommendation))
                             &optional (stream *standard-output*))
   (if (eql ':hold (getf entry ':recommendation))
-      (format stream "~5f: [~a] got ~a ~a ~{~a~^ ~} from ~a w/ root-bucket ~a~%"
+      (format stream "~5f: [~a] got ~a ~a ~{~a~^ ~} from ~a w/ root-bucket (~{~a~^ ~})~%"
               (getf entry ':time)
               (getf entry ':source)
               (getf entry ':recommendation)
@@ -156,15 +156,6 @@
           (getf entry ':internal-pong)
           (getf entry ':hold-cluster)))
 
-(defmethod print-log-entry (entry
-                            (source supervisor)
-                            (entry-type (eql ':set-held-by-roots))
-                            &optional (stream *standard-output*))
-  (format stream "~5f: [~a] setting held-by-roots of hold-cluster (~{~a~^ ~}) to itself~%"
-          (getf entry ':time)
-          (getf entry ':source)
-          (getf entry ':held-by-roots)))
-
 ;;;
 ;;; filtering routines
 ;;;
@@ -277,8 +268,7 @@
   (member (getf entry ':entry-type) '(:aborting-multireweight-collection
                                       :aborting-multireweight-negative-pong
                                       :aborting-multireweight-priority
-                                      :aborting-multireweight-solo
-                                      :set-held-by-roots)))
+                                      :aborting-multireweight-solo)))
 
 (defun debug-log (&optional (entries (logger-entries *logger*)))
   "Trims log `ENTRIES' to only ones useful to debugging (see `DEBUG-ENTRY?')."

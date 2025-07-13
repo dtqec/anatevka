@@ -44,10 +44,13 @@
 
 `INTERNAL-PONG': The unified `message-pong' among the different roots in this `HOLD-CLUSTER', where all the roots in the cluster are treated as part of the same tree.  Ultimately serves to measure the amount by which to `MULTIREWEIGHT'.
 
-`TARGETS': The lock targets collected as part of this operation."
+`TARGETS': The lock targets collected as part of this operation.
+
+`SOURCE-ROOT': The source root of the originating HOLD pong."
   (hold-cluster  nil :type list)
   (internal-pong nil :type (or null message-pong))
-  (targets       nil :type list))
+  (targets       nil :type list)
+  (source-root   nil :type address))
 
 ;;;
 ;;; supervisor command definitions
@@ -55,11 +58,11 @@
 
 (define-process-upkeep ((supervisor supervisor)) (START-MULTIREWEIGHT pong)
   "Sets up the multireweight procedure by first collecting mutually-held roots, which form the `HOLD-CLUSTER'."
-  ;; NOTE: we couldn't call MAKE-PONG even if we wanted to, since we don't have
-  ;;       access to the underlying node's Lisp object (or its type).
-  (push (make-data-frame-multireweight :internal-pong nil)
-        (process-data-stack supervisor))
   (with-slots (root-bucket source-root) pong
+    ;; NOTE: we couldn't call MAKE-PONG even if we wanted to, since we don't have
+    ;;       access to the underlying node's Lisp object (or its type).
+    (push (make-data-frame-multireweight :internal-pong nil :source-root source-root)
+          (process-data-stack supervisor))
     (setf root-bucket (remove-duplicates root-bucket :test #'address=))
     (process-continuation supervisor
                           `(CONVERGECAST-COLLECT-ROOTS ,source-root ,root-bucket)
@@ -131,23 +134,51 @@ After collecting the `HOLD-CLUSTER', we then `CHECK-PRIORITY' to determine if we
                 :do (setf internal-pong
                           ;; internal-roots?
                           (unify-pongs internal-pong reply)))
-          (log-entry :entry-type ':multireweight-broadcast-scan-result
-                     :hold-cluster roots
-                     :internal-pong internal-pong)
-          ;; if our best recommendation is negative, we abort the MRW
-          (when (minusp (message-pong-weight internal-pong))
-            (with-slots (source-root source-id) internal-pong
+          (with-slots (source-root source-id target-root weight edges recommendation)
+              internal-pong
+            (log-entry :entry-type ':multireweight-broadcast-scan-result
+                       :log-level 1
+                       :source-root source-root
+                       :source-id source-id
+                       :target-root target-root
+                       :weight weight
+                       :edges edges
+                       :recommendation recommendation
+                       :hold-cluster roots)
+            ;; if our best recommendation is negative, we abort the MRW
+            (when (minusp (message-pong-weight internal-pong))
               (log-entry :entry-type ':aborting-multireweight-negative-pong
                          :log-level 1
                          :source-root source-root
                          :source-id source-id
-                         :internal-pong internal-pong
+                         :target-root target-root
+                         :weight weight
+                         :edges edges
+                         :recommendation recommendation
                          :hold-cluster roots)
               (setf (process-lockable-aborting? supervisor) t)
-              (finish-handler)))
-          (process-continuation supervisor
-                                `(GATHER-TARGETS-MULTIREWEIGHT)
-                                `(START-INNER-MULTIREWEIGHT)))))))
+              (finish-handler))
+            ;; if our best recommendation is zero, we also abort the MRW
+            ;;
+            ;; NB: this means that someone in the hold-cluster can take action
+            (when (zerop (message-pong-weight internal-pong))
+              (log-entry :entry-type ':aborting-multireweight-zero-pong
+                         :log-level 1
+                         :source-root source-root
+                         :source-id source-id
+                         :target-root target-root
+                         :weight weight
+                         :edges edges
+                         :recommendation recommendation
+                         :hold-cluster roots)
+              (setf (process-lockable-aborting? supervisor) t)
+              ;; NB: this branch implies that someone in the hold-cluster can act
+              ;;     therefore, we call `SET-SCAN-LOOP-T' to perturb the algorithm
+              (process-continuation supervisor `(SET-SCAN-LOOP-T))
+              (finish-handler))
+            (process-continuation supervisor
+                                  `(GATHER-TARGETS-MULTIREWEIGHT)
+                                  `(START-INNER-MULTIREWEIGHT))))))))
 
 (define-process-upkeep ((supervisor supervisor)) (GATHER-TARGETS-MULTIREWEIGHT)
   "Before entering the critical section, we must determine which roots we should lock. If our target-root is outside of our hold-cluster, we need to lock it and the hold cluster it is contained within (if any)."
@@ -203,8 +234,16 @@ After collecting the `HOLD-CLUSTER', we then `CHECK-PRIORITY' to determine if we
                               `(CHECK-REWINDING ,hold-cluster ,internal-pong 0)
                               `(BROADCAST-UNLOCK))))))
 
+(define-process-upkeep ((supervisor supervisor)) (SET-SCAN-LOOP-T)
+  "If `MULTIREWEIGHT-BROADCAST-SCAN' results in a zero-weight pong, we run this command, which tells `SOURCE-ROOT' to act as if its last SCAN failed."
+  (with-slots (internal-pong source-root) (peek (process-data-stack supervisor))
+    (assert internal-pong () "Somehow we're in SET-SCAN-LOOP-T with a null pong.")
+    (with-slots (weight) internal-pong
+      (assert (zerop weight) () "Somehow we're in SET-SCAN-LOOP-T with a non-zero rec.")
+      (sync-rpc (make-message-scan-loop-t) (set? source-root)))))
+
 (define-process-upkeep ((supervisor supervisor)) (FINISH-MULTIREWEIGHT source-root)
-  "Clean up supervisor-local state from the multireweight operation. Additionally unset `HELD-BY-ROOTS' for the `SOURCE-ROOT' if the operation was successful."
+  "Clean up supervisor-local state from the multireweight operation, by popping the `DATA-FRAME-MULTIREWEIGHT' from its data stack. Additionally, if the operation was successful, unset `HELD-BY-ROOTS' for the `SOURCE-ROOT'."
   (pop (process-data-stack supervisor))
   (unless (process-lockable-aborting? supervisor)
     (sync-rpc (make-message-set :slots '(held-by-roots) :values `(,nil))

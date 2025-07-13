@@ -1650,7 +1650,8 @@ d(B, D), d(H, J), d(N, P) = 2 and d(F, G), d(L, M) = 1
                   :positive? nil)
                (I :id (id 11 0)
                   :internal-weight 0
-                  :children (list (vv-edge I H)))
+                  :children (list (vv-edge I H))
+                  :held-by-roots (list L))
                (J :id (id 9 2)
                   :internal-weight 0
                   :match-edge (vv-edge J K)
@@ -1666,31 +1667,30 @@ d(B, D), d(H, J), d(N, P) = 2 and d(F, G), d(L, M) = 1
                   :children (list (vv-edge L K))
                   :held-by-roots (list I))
                (M :id (id 14 2)
-                  :internal-weight 0
-                  :children (list (vv-edge M N))
-                  :held-by-roots (list P))
+                  :internal-weight 1
+                  :children (list (vv-edge M N)))
                (N :id (id 16 2)
                   :children (list (vv-edge N O))
-                  :internal-weight 2
+                  :internal-weight 1
                   :match-edge (vv-edge N O)
                   :parent (vv-edge N M)
                   :positive? nil)
                (O :id (id 18 2)
-                  :internal-weight 0
+                  :internal-weight 1
                   :match-edge (vv-edge O N)
                   :parent (vv-edge O N))
                (P :id (id 16 0)
-                  :internal-weight 0
+                  :internal-weight 1
                   :children (list (vv-edge P Q))
                   :held-by-roots (list M))
                (Q :id (id 18 0)
                   :children (list (vv-edge Q R))
-                  :internal-weight 2
+                  :internal-weight 1
                   :match-edge (vv-edge Q R)
                   :parent (vv-edge Q P)
                   :positive? nil)
                (R :id (id 20 0)
-                  :internal-weight 0
+                  :internal-weight 1
                   :match-edge (vv-edge R Q)
                   :parent (vv-edge R Q)))
             (is (tree-equalp original-tree target-tree))))))))

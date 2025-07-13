@@ -266,8 +266,10 @@ evalutes to
   (values nil :type list))
 
 (defstruct (message-id-query (:include message))
-  "Replies with the minimum ID at this macrovertex."
-  )
+  "Replies with the minimum ID at this macrovertex.")
+
+(defstruct (message-scan-loop-t (:include message))
+  "Instructs the node to act as if its last scan was unsuccessful.")
 
 ;;;
 ;;; message handlers for BLOSSOM-NODE
@@ -384,6 +386,13 @@ evalutes to
                                       :address (process-public-address node)))
   (setf (blossom-node-wilting node) t))
 
+(define-rpc-handler handle-message-scan-loop-t
+    ((node blossom-node) (message message-scan-loop-t))
+  "When a node is poised to `SCAN-LOOP', ensure that repeat? is T."
+  (when (eql 'SCAN-LOOP (first (first (process-command-stack node))))
+    (setf (first (process-command-stack node)) `(SCAN-LOOP t))
+    t))
+
 ;;;
 ;;; blossom message dispatch table
 ;;;
@@ -441,7 +450,8 @@ evalutes to
   
   (message-sprout                     'handle-message-sprout-on-blossom)
   
-  (message-id-query                   'handle-message-id-query))
+  (message-id-query                   'handle-message-id-query)
+  (message-scan-loop-t                'handle-message-scan-loop-t))
 
 ;;;
 ;;; basic command definitions for BLOSSOM-NODE

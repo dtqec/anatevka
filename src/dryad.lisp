@@ -70,6 +70,7 @@ NOTE: In the basic implementation, these messages must be waiting for the DRYAD 
                                       :debug? (process-debug? dryad)))
          (node-address (process-public-address node-process)))
     (log-entry :entry-type ':handling-sow
+               :log-level 2
                :address node-address
                :id node-id
                :type (type-of node-process))
@@ -197,6 +198,7 @@ NOTE: In the basic implementation, these messages must be waiting for the DRYAD 
     (let ((id-pair (list (gethash (first address-pair) (dryad-ids dryad))
                          (gethash (second address-pair) (dryad-ids dryad)))))
       (log-entry :entry-type ':processing-pair
+                 :log-level 2
                  :address-pair address-pair
                  :id-pair id-pair)
       (send-message (dryad-match-address dryad)
@@ -221,6 +223,7 @@ NOTE: In the basic implementation, these messages must be waiting for the DRYAD 
                       :reason 'tree-structure))
           (t
            (log-entry :entry-type ':dryad-sending-expand
+                      :log-level 2
                       :sprout sprout
                       :topmost topmost
                       :match-edge match-edge)

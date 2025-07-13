@@ -23,7 +23,7 @@
                             (entry-type (eql ':got-recommendation))
                             &optional (stream *standard-output*))
   (if (eql ':hold (getf entry ':recommendation))
-      (format stream "~5f: [~a] got ~a ~a ~{~a~^ ~} from ~a w/ root-bucket ~a~%"
+      (format stream "~5f: [~a] got ~a ~a ~{~a~^ ~} from ~a w/ root-bucket (~{~a~^ ~})~%"
               (getf entry ':time)
               (getf entry ':source)
               (getf entry ':recommendation)
@@ -156,15 +156,6 @@
           (getf entry ':internal-pong)
           (getf entry ':hold-cluster)))
 
-(defmethod print-log-entry (entry
-                            (source supervisor)
-                            (entry-type (eql ':set-held-by-roots))
-                            &optional (stream *standard-output*))
-  (format stream "~5f: [~a] setting held-by-roots of hold-cluster (~{~a~^ ~}) to itself~%"
-          (getf entry ':time)
-          (getf entry ':source)
-          (getf entry ':held-by-roots)))
-
 ;;;
 ;;; filtering routines
 ;;;
@@ -211,111 +202,28 @@
         :finally (return (union (set-difference positive-processes self-held-processes)
                                 (set-difference start-processes done-processes)))))
 
-(defgeneric algorithmic-entry? (entry source)
-  (:documentation "Used to define which subset of `ENTRY' types emanating from `SOURCE' are critical to understanding algorithmic developments.")
-  (:method (entry source) nil))
-
-(defmethod algorithmic-entry? (entry (source dryad))
-  (member (getf entry ':entry-type) '(:handling-sow
-                                      :dryad-sending-expand
-                                      :processing-pair)))
-
-(defmethod algorithmic-entry? (entry (source supervisor))
-  (member (getf entry ':entry-type) '(:got-recommendation
-                                      :success
-                                      :reweighting
-                                      :rewinding)))
-
-(defmethod algorithmic-entry? (entry (source blossom-node))
-  (member (getf entry ':entry-type) '(:set-up-blossom
-                                      :blossom-extinguished)))
-
-(defun reduced-log (&optional (entries (logger-entries *logger*)))
-  "Trims log `ENTRIES' to only ones of primary interest (see `ALGORITHMIC-ENTRY?')."
+(defun remove-unsuccessful-supervisors (&optional (entries (logger-entries *logger*)))
+  "Trims log `ENTRIES' by removing entries from unsuccessful SUPERVISORs."
   (let (trimmed-entries
         (successful-processes (successful-supervisors entries)))
     (dolist (entry entries (reverse trimmed-entries))
       (let ((source (getf entry ':source)))
-        (cond
-          ;; dryad logs
-          ((and (typep source 'dryad)
-                (algorithmic-entry? entry source))
-           (push entry trimmed-entries))
-          ;; supervisor logs
-          ((and (typep source 'supervisor)
-                (member source successful-processes)
-                (algorithmic-entry? entry source))
-           (push entry trimmed-entries))
-          ;; blossom logs
-          ((and (typep source 'blossom-node)
-                (algorithmic-entry? entry source))
-           (push entry trimmed-entries)))))))
+        (unless (and (typep source 'supervisor)
+                     (not (member source successful-processes)))
+          (push entry trimmed-entries))))))
+
+;;
+;; printer functions
+;;
 
 (defun print-reduced-log (&key (entries (logger-entries *logger*))
-                               (start-time nil start-time-p)
-                               (end-time nil end-time-p))
-  "Shorthand for printing the results of `REDUCED-LOG'. Can optionally provide a `START-TIME' and/or `END-TIME' to further trim the `REDUCED-LOG' entries."
-  (cond
-    ((and start-time-p end-time-p)
-     (print-log (trim-log :entries (reduced-log entries)
-                          :start-time start-time
-                          :end-time end-time)))
-    (start-time-p
-     (print-log (trim-log :entries (reduced-log entries)
-                          :start-time start-time)))
-    (end-time-p
-     (print-log (trim-log :entries (reduced-log entries)
-                          :end-time end-time)))
-    (t
-     (print-log (reduced-log entries)))))
-
-(defgeneric debug-entry? (entry source)
-  (:documentation "Used to define which subset of `ENTRY' types emanating from `SOURCE' are helpful for debugging.")
-  (:method (entry source) nil))
-
-(defmethod debug-entry? (entry (source supervisor))
-  (member (getf entry ':entry-type) '(:aborting-multireweight-collection
-                                      :aborting-multireweight-negative-pong
-                                      :aborting-multireweight-priority
-                                      :aborting-multireweight-solo
-                                      :set-held-by-roots)))
-
-(defun debug-log (&optional (entries (logger-entries *logger*)))
-  "Trims log `ENTRIES' to only ones useful to debugging (see `DEBUG-ENTRY?')."
-  (let (trimmed-entries)
-    (dolist (entry entries (reverse trimmed-entries))
-      (let ((source (getf entry ':source)))
-        (cond
-          ;; dryad logs
-          ((and (typep source 'dryad)
-                (or (algorithmic-entry? entry source)
-                    (debug-entry? entry source)))
-           (push entry trimmed-entries))
-          ;; supervisor logs
-          ((and (typep source 'supervisor)
-                (or (algorithmic-entry? entry source)
-                    (debug-entry? entry source)))
-           (push entry trimmed-entries))
-          ;; blossom logs
-          ((and (typep source 'blossom-node)
-                (or (algorithmic-entry? entry source)
-                    (debug-entry? entry source)))
-           (push entry trimmed-entries)))))))
-
-(defun print-debug-log (&key (entries (logger-entries *logger*))
-                             (start-time nil start-time-p)
-                             (end-time nil end-time-p))
-  "Shorthand for printing the results of `DEBUG-LOG'. Can optionally provide a `START-TIME' and/or `END-TIME' to further trim the `DEBUG-LOG' entries."
-  (cond
-    ((and start-time-p end-time-p)
-     (print-log (trim-log :entries (debug-log entries)
-                          :start-time start-time
-                          :end-time end-time)))
-    (start-time-p
-     (print-log (trim-log :entries (debug-log entries)
-                          :start-time start-time)))
-    (end-time-p
-     (print-log (trim-log :entries (debug-log entries)
-                          :end-time end-time)))
-    (t
-     (print-log (debug-log entries)))))
+                               (stream *standard-output*)
+                               (start-time nil)
+                               (end-time nil)
+                               (log-level 2))
+  "Shorthand for calling `PRINT-LOG' without unsuccessful supervisors. By default, this sets `LOG-LEVEL' to 2, which means we will only print algorithmically-relevant log entries. However, this can be changed to 1 to add INFO-like logs, or 0 to print everything. In addition, we can optionally provide a `START-TIME' and/or `END-TIME' to further trim the entries."
+  (print-log :entries (remove-unsuccessful-supervisors entries)
+             :stream stream
+             :start-time start-time
+             :end-time end-time
+             :log-level log-level))

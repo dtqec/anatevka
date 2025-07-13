@@ -76,6 +76,7 @@ PONG: The PONG that this process received at its START."
   (let ((pong (pop (process-data-stack supervisor))))
     (with-slots (edges weight source-root target-root recommendation root-bucket) pong
       (log-entry :entry-type ':got-recommendation
+                 :log-level 2
                  :source-root source-root
                  :target-root target-root
                  :recommendation recommendation
@@ -114,6 +115,7 @@ PONG: The PONG that this process received at its START."
           ;; (intentionally) don't have an aborting? guard
           (set-result source-root :returned? returned?)
         (log-entry :entry-type ':success
+                   :log-level 2
                    :success (not (process-lockable-aborting? supervisor)))
         (process-die)))))
 

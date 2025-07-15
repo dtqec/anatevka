@@ -122,7 +122,13 @@
     :initform nil
     :initarg :held-by-roots
     :type list
-    :documentation "LIST of `BLOSSOM-NODE' roots who are causing us to `HOLD'."))
+    :documentation "LIST of `BLOSSOM-NODE' roots who are causing us to `HOLD'.")
+   (claimed?
+    :accessor blossom-node-claimed?
+    :initform nil
+    :initarg :claimed?
+    :type boolean
+    :documentation "If T, this blossom is claimed as part of a hold-cluster."))
   (:documentation "Embodies a blossom in the blossom algorithm."))
 
 ;;;
@@ -268,8 +274,11 @@ evalutes to
 (defstruct (message-id-query (:include message))
   "Replies with the minimum ID at this macrovertex.")
 
-(defstruct (message-scan-loop-t (:include message))
-  "Instructs the node to act as if its last scan was unsuccessful.")
+(defstruct (message-claim-root (:include message))
+  "Attempts to claim a root; if successful, returns a release channel.")
+
+(defstruct (message-release-root (:include message))
+  "Releases a claimed root.")
 
 ;;;
 ;;; message handlers for BLOSSOM-NODE
@@ -386,11 +395,23 @@ evalutes to
                                       :address (process-public-address node)))
   (setf (blossom-node-wilting node) t))
 
-(define-rpc-handler handle-message-scan-loop-t
-    ((node blossom-node) (message message-scan-loop-t))
-  "When a node is poised to `SCAN-LOOP', ensure that repeat? is T."
-  (when (eql 'SCAN-LOOP (first (first (process-command-stack node))))
-    (setf (first (process-command-stack node)) `(SCAN-LOOP t))
+(define-rpc-handler handle-message-claim-root
+    ((node blossom-node) (message message-claim-root))
+  "If node is already claimed, return NIL. Otherwise, set claimed? to T and return our public address."
+  (with-slots (claimed?) node
+    (cond
+      (claimed?
+       nil)
+      (t
+       (setf claimed? t)
+       (process-public-address node)))))
+
+(define-rpc-handler handle-message-release-root
+    ((node blossom-node) (message message-release-root))
+  "Set claimed? to NIL."
+  (with-slots (claimed?) node
+    (assert claimed? () "Trying to release an unclaimed root!")
+    (setf claimed? nil)
     t))
 
 ;;;
@@ -451,7 +472,8 @@ evalutes to
   (message-sprout                     'handle-message-sprout-on-blossom)
   
   (message-id-query                   'handle-message-id-query)
-  (message-scan-loop-t                'handle-message-scan-loop-t))
+  (message-claim-root                 'handle-message-claim-root)
+  (message-release-root               'handle-message-release-root))
 
 ;;;
 ;;; basic command definitions for BLOSSOM-NODE

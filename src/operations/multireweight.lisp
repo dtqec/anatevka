@@ -145,7 +145,7 @@ After collecting the `hold-cluster', we then `CHECK-PRIORITY' to determine if we
                      :log-level 1
                      :roots roots)
           (setf (process-lockable-aborting? supervisor) t))
-        (setf claimed-roots (remove nil replies))))))
+        (setf claimed-roots (nconc claimed-roots (remove nil replies)))))))
 
 (define-process-upkeep ((supervisor supervisor)) (BROADCAST-SCAN-MULTIREWEIGHT roots)
   "Now that we know the full `HOLD-CLUSTER', we `SCAN' each, and aggregate the results in order to make a reweighting decision."

@@ -146,14 +146,47 @@
 
 (defmethod print-log-entry (entry
                             (source supervisor)
-                            (entry-type (eql ':aborting-multireweight-negative-pong))
+                            (entry-type (eql ':multireweight-broadcast-scan-result))
                             &optional (stream *standard-output*))
-  (format stream "~5f: [~a] aborting ~a (~a)'s MRW bc the cluster scan returned a negative-weight pong ~a for hold-cluster (~{~a~^ ~})~%"
+  (format stream "~5f: [~a] ~a (~a)'s MRW cluster scan returned pong (~a ~a ~{~a~^ ~} target-root ~a) for hold-cluster (~{~a~^ ~})~%"
           (getf entry ':time)
           (getf entry ':source)
           (getf entry ':source-root)
           (getf entry ':source-id)
-          (getf entry ':internal-pong)
+          (getf entry ':recommendation)
+          (getf entry ':weight)
+          (getf entry ':edges)
+          (getf entry ':target-root)
+          (getf entry ':hold-cluster)))
+
+(defmethod print-log-entry (entry
+                            (source supervisor)
+                            (entry-type (eql ':aborting-multireweight-negative-pong))
+                            &optional (stream *standard-output*))
+  (format stream "~5f: [~a] aborting ~a (~a)'s MRW bc the cluster scan returned a negative-weight pong (~a ~a ~{~a~^ ~} target-root ~a) for hold-cluster (~{~a~^ ~})~%"
+          (getf entry ':time)
+          (getf entry ':source)
+          (getf entry ':source-root)
+          (getf entry ':source-id)
+          (getf entry ':recommendation)
+          (getf entry ':weight)
+          (getf entry ':edges)
+          (getf entry ':target-root)
+          (getf entry ':hold-cluster)))
+
+(defmethod print-log-entry (entry
+                            (source supervisor)
+                            (entry-type (eql ':aborting-multireweight-zero-pong))
+                            &optional (stream *standard-output*))
+  (format stream "~5f: [~a] aborting ~a (~a)'s MRW bc the cluster scan returned a zero-weight pong (~a ~a ~{~a~^ ~} target-root ~a) for hold-cluster (~{~a~^ ~})~%"
+          (getf entry ':time)
+          (getf entry ':source)
+          (getf entry ':source-root)
+          (getf entry ':source-id)
+          (getf entry ':recommendation)
+          (getf entry ':weight)
+          (getf entry ':edges)
+          (getf entry ':target-root)
           (getf entry ':hold-cluster)))
 
 ;;;

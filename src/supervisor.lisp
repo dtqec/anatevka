@@ -69,7 +69,7 @@ PONG: The PONG that this process received at its START."
   (:method ((recommendation (eql ':EXPAND)))
     'START-EXPAND)
   (:method ((recommendation (eql ':HOLD)))
-    'START-MULTIREWEIGHT))
+    'START-HOLD))
 
 (define-process-upkeep ((supervisor supervisor)) (START)
   "Set up initial state: the stack frame and which procedure to branch on."

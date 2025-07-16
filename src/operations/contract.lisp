@@ -269,15 +269,15 @@ If we have a non-null peduncle edge (F -> C above), then we need to tell its sou
         (sync-rpc (make-message-values :values '(dryad))
             ((dryad-address) rootmost-cycle-node)
           (setf (supervisor-node-dryad supervisor) dryad-address)
+          (send-message dryad-address
+                        (make-message-add-macrovertex :address fresh-blossom))
           (sync-rpc (make-message-set-up-blossom
                      :peduncle-edge peduncle-edge
                      :petals path
                      :petal-children petal-child-edges
                      :dryad dryad-address)
               (set-up-result fresh-blossom)
-            (sync-rpc (make-message-add-macrovertex :address fresh-blossom)
-                (result dryad-address)
-              (values))))))))
+            (values)))))))
 
 ;;;
 ;;; message definitions

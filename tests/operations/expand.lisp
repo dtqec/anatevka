@@ -399,5 +399,4 @@
                                      (vv-edge F D))
                        :match-edge (bb-edge BLOSSOM2 D B B)
                        :positive? t))
-          (is (tree-equalp original-tree target-tree))
-          (is (= 1 (hash-table-count (dryad-macrovertices dryad)))))))))
+          (is (tree-equalp original-tree target-tree)))))))

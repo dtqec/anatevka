@@ -262,11 +262,13 @@ After collecting the `hold-cluster', we then `CHECK-PRIORITY' to determine if we
       (log-entry :entry-type ':released-roots))))
 
 (define-process-upkeep ((supervisor supervisor)) (FINISH-MULTIREWEIGHT)
-  "Clean up supervisor-local state from the multireweight operation, by popping the `DATA-FRAME-MULTIREWEIGHT' from its data stack. Additionally, if the operation was successful, unset `HELD-BY-ROOTS' for the `SOURCE-ROOT'."
-  (with-slots (source-root) (pop (process-data-stack supervisor))
+  "Clean up supervisor-local state from the multireweight operation, by popping the `DATA-FRAME-MULTIREWEIGHT' from its data stack. Additionally, if the operation was successful, unset `HELD-BY-ROOTS' for everyone in the `HOLD-CLUSTER'."
+  (with-slots (hold-cluster) (pop (process-data-stack supervisor))
     (unless (process-lockable-aborting? supervisor)
-      (sync-rpc (make-message-set :slots '(held-by-roots) :values `(,nil))
-          (held-by-roots source-root)))))
+      (flet ((payload-constructor ()
+               (make-message-set :slots '(held-by-roots) :values `(,nil))))
+        (with-replies (replies)
+                      (send-message-batch #'payload-constructor hold-cluster))))))
 
 ;;;
 ;;; message definitions

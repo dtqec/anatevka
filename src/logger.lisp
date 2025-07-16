@@ -146,16 +146,25 @@
 
 (defmethod print-log-entry (entry
                             (source supervisor)
-                            (entry-type (eql ':multireweight-broadcast-scan-result))
+                            (entry-type (eql ':aborting-multireweight-claim-failure))
                             &optional (stream *standard-output*))
-  (format stream "~5f: [~a] ~a (~a)'s MRW cluster scan returned pong (~a ~a ~{~a~^ ~} target-root ~a) for hold-cluster (~{~a~^ ~})~%"
+  (format stream "~5f: [~a] aborting MRW bc claiming failed for roots (~{~a~^ ~})~%"
           (getf entry ':time)
           (getf entry ':source)
-          (getf entry ':source-root)
-          (getf entry ':source-id)
+          (getf entry ':roots)))
+
+(defmethod print-log-entry (entry
+                            (source supervisor)
+                            (entry-type (eql ':multireweight-broadcast-scan-result))
+                            &optional (stream *standard-output*))
+  (format stream "~5f: [~a] MRW cluster scan returned pong (~a ~a ~{~a~^ ~} source-root ~a source-id ~a target-root ~a) for hold-cluster (~{~a~^ ~})~%"
+          (getf entry ':time)
+          (getf entry ':source)
           (getf entry ':recommendation)
           (getf entry ':weight)
           (getf entry ':edges)
+          (getf entry ':source-root)
+          (getf entry ':source-id)
           (getf entry ':target-root)
           (getf entry ':hold-cluster)))
 
@@ -163,14 +172,14 @@
                             (source supervisor)
                             (entry-type (eql ':aborting-multireweight-negative-pong))
                             &optional (stream *standard-output*))
-  (format stream "~5f: [~a] aborting ~a (~a)'s MRW bc the cluster scan returned a negative-weight pong (~a ~a ~{~a~^ ~} target-root ~a) for hold-cluster (~{~a~^ ~})~%"
+  (format stream "~5f: [~a] aborting MRW bc the cluster scan returned a negative-weight pong (~a ~a ~{~a~^ ~} source-root ~a source-id ~a target-root ~a) for hold-cluster (~{~a~^ ~})~%"
           (getf entry ':time)
           (getf entry ':source)
-          (getf entry ':source-root)
-          (getf entry ':source-id)
           (getf entry ':recommendation)
           (getf entry ':weight)
           (getf entry ':edges)
+          (getf entry ':source-root)
+          (getf entry ':source-id)
           (getf entry ':target-root)
           (getf entry ':hold-cluster)))
 
@@ -178,14 +187,14 @@
                             (source supervisor)
                             (entry-type (eql ':aborting-multireweight-zero-pong))
                             &optional (stream *standard-output*))
-  (format stream "~5f: [~a] aborting ~a (~a)'s MRW bc the cluster scan returned a zero-weight pong (~a ~a ~{~a~^ ~} target-root ~a) for hold-cluster (~{~a~^ ~})~%"
+  (format stream "~5f: [~a] aborting MRW bc the cluster scan returned a zero-weight pong (~a ~a ~{~a~^ ~} source-root ~a source-id ~a target-root ~a) for hold-cluster (~{~a~^ ~})~%"
           (getf entry ':time)
           (getf entry ':source)
-          (getf entry ':source-root)
-          (getf entry ':source-id)
           (getf entry ':recommendation)
           (getf entry ':weight)
           (getf entry ':edges)
+          (getf entry ':source-root)
+          (getf entry ':source-id)
           (getf entry ':target-root)
           (getf entry ':hold-cluster)))
 

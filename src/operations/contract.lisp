@@ -275,7 +275,9 @@ If we have a non-null peduncle edge (F -> C above), then we need to tell its sou
                      :petal-children petal-child-edges
                      :dryad dryad-address)
               (set-up-result fresh-blossom)
-            (values)))))))
+            (sync-rpc (make-message-add-macrovertex :address fresh-blossom)
+                (result dryad-address)
+              (values))))))))
 
 ;;;
 ;;; message definitions

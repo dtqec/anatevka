@@ -71,6 +71,6 @@
 ;; some tests and their associated bugfix:
 ;;    1577 - GATHER-TARGETS and GATHER-TARGETS-MULTIREWEIGHT
 ;;    8678 - set returned? on all RW/MRW messages outside locks
-(define-blossom-suite "15" ()) ; 15x15 grid tests
+(define-blossom-suite "15" (:timeout 2000)) ; 15x15 grid tests
 
 (define-blossom-suite "20" (:timeout 2000)) ; 20x20 grid tests

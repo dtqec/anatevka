@@ -47,7 +47,12 @@
     :accessor dryad-sprouted?
     :initform (make-hash-table :hash-function #'hash-address :test #'address=)
     :type hash-table
-    :documentation "A map ADDRESS -> BOOLEAN which records whether a `BLOSSOM-NODE' has begun participating in matches."))
+    :documentation "A map ADDRESS -> BOOLEAN which records whether a `BLOSSOM-NODE' has begun participating in matches.")
+   (macrovertices
+    :accessor dryad-macrovertices
+    :initform (make-hash-table :hash-function #'hash-address :test #'address=)
+    :type hash-table
+    :documentation "A HASH-TABLE-based set of ADDRESSes that tracks the live macrovertices this DRYAD is responsible for."))
   (:documentation "PROCESS responsible for the injection and ejection of nodes from the blossom algorithm."))
 
 (defmethod make-discovery-message ((dryad dryad) &key channels-to-try id)
@@ -112,15 +117,29 @@ NOTE: In the basic implementation, these messages must be waiting for the DRYAD 
       (remhash address (dryad-sprouted? dryad))
       id)))
 
+(define-rpc-handler handler-message-add-macrovertex
+    ((dryad dryad) (message message-add-macrovertex))
+  "Handles an add-macrovertex message by keeping track of the provided address."
+  (with-slots (address) message
+    (setf (gethash address (dryad-macrovertices dryad)) t)))
+
+(define-rpc-handler handler-message-remove-macrovertex
+    ((dryad dryad) (message message-remove-macrovertex))
+  "Handles a remove-macrovertex message by forgetting about the provided address."
+  (with-slots (address) message
+    (remhash address (dryad-macrovertices dryad))))
+
 ;;;
 ;;; install the handlers into the dispatch table
 ;;;
 
 (define-message-dispatch dryad
-  (message-sow      'handler-message-sow)
-  (message-sprout   'handler-message-sprout)
-  (message-discover 'handler-message-discover)
-  (message-wilting  'handler-message-wilting))
+  (message-sow                'handler-message-sow)
+  (message-sprout             'handler-message-sprout)
+  (message-discover           'handler-message-discover)
+  (message-wilting            'handler-message-wilting)
+  (message-add-macrovertex    'handler-message-add-macrovertex)
+  (message-remove-macrovertex 'handler-message-remove-macrovertex))
 
 ;;;
 ;;; DRYAD command definitions

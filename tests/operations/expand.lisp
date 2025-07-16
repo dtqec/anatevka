@@ -19,7 +19,10 @@
 "
   (with-with ((with-courier ())
               (with-simulation (simulation (*local-courier*))))
-    (let ((dryad-address (register)))
+    (let* ((dryad (spawn-process 'dryad :match-address (register)
+                                        :debug? t))
+           (dryad-address (process-public-address dryad)))
+      (simulation-add-event simulation (make-event :callback dryad))
       (blossom-let (original-tree :dryad dryad-address)
           ((A :id (id 0)     :children (list (bb-edge A A B BLOSSOM))
               :paused? T)
@@ -40,6 +43,9 @@
                     :match-edge (bb-edge BLOSSOM D E E)
                     :positive? nil
                     :children (list (bb-edge BLOSSOM D E E))))
+        (setf (gethash (process-public-address BLOSSOM)
+                       (dryad-macrovertices dryad))
+              t)
         (let ((supervisor (supervisor simulation
                                       :edges (list (bb-edge BLOSSOM BLOSSOM
                                                             nil nil))
@@ -72,7 +78,8 @@
                         :positive? nil
                         :children (list (bb-edge BLOSSOM D E E))
                         :wilting T))
-            (is (tree-equalp original-tree target-tree))))))))
+            (is (tree-equalp original-tree target-tree))
+            (is (= 0 (hash-table-count (dryad-macrovertices dryad))))))))))
 
 (deftest test-supervisor-expand-inner-3-blossom-match=parent ()
   "Checks the transformation (! means match in vertical direction)
@@ -90,7 +97,10 @@
 "
   (with-with ((with-courier ())
               (with-simulation (simulation (*local-courier*))))
-    (let ((dryad-address (register)))
+    (let* ((dryad (spawn-process 'dryad :match-address (register)
+                                        :debug? t))
+           (dryad-address (process-public-address dryad)))
+      (simulation-add-event simulation (make-event :callback dryad))
       (blossom-let (original-tree :dryad dryad-address)
           ((A :id (id 0 2)
               :children (list (bb-edge A A B BLOSSOM))
@@ -112,6 +122,9 @@
                     :match-edge (bb-edge BLOSSOM B E E)
                     :positive? nil
                     :children (list (bb-edge BLOSSOM B E E))))
+        (setf (gethash (process-public-address BLOSSOM)
+                       (dryad-macrovertices dryad))
+              t)
         (let ((supervisor (supervisor simulation
                                       :edges (list (bb-edge BLOSSOM BLOSSOM
                                                             nil nil))
@@ -145,7 +158,8 @@
                         :positive? nil
                         :children (list (bb-edge BLOSSOM B E E))
                         :wilting T))
-            (is (tree-equalp original-tree target-tree))))))))
+            (is (tree-equalp original-tree target-tree))
+            (is (= 0 (hash-table-count (dryad-macrovertices dryad))))))))))
 
 (deftest test-supervisor-expand-inner-5-blossom-match/=parent ()
   "Checks the transformation (! means match in vertical direction)
@@ -162,7 +176,10 @@
 "
   (with-with ((with-courier ())
               (with-simulation (simulation (*local-courier*))))
-    (let ((dryad-address (register)))
+    (let* ((dryad (spawn-process 'dryad :match-address (register)
+                                        :debug? t))
+           (dryad-address (process-public-address dryad)))
+      (simulation-add-event simulation (make-event :callback dryad))
       (blossom-let (original-tree :dryad dryad-address)
           ((A :id (id 0 2)
               :children (list (bb-edge A A B BLOSSOM))
@@ -185,6 +202,9 @@
                     :match-edge (bb-edge BLOSSOM E G G)
                     :positive? nil
                     :children (list (bb-edge BLOSSOM E G G))))
+        (setf (gethash (process-public-address BLOSSOM)
+                       (dryad-macrovertices dryad))
+              t)
         (let ((supervisor (supervisor simulation
                                       :edges (list (bb-edge BLOSSOM BLOSSOM
                                                             nil nil))
@@ -222,7 +242,8 @@
                         :positive? nil
                         :children (list (bb-edge BLOSSOM E G G))
                         :wilting T))
-            (is (tree-equalp original-tree target-tree))))))))
+            (is (tree-equalp original-tree target-tree))
+            (is (= 0 (hash-table-count (dryad-macrovertices dryad))))))))))
 
 (deftest test-supervisor-expand-inner-5-blossom-match=parent ()
   "Checks the transformation (! means match in vertical direction)
@@ -242,7 +263,10 @@
 "
   (with-with ((with-courier ())
               (with-simulation (simulation (*local-courier*))))
-    (let ((dryad-address (register)))
+    (let* ((dryad (spawn-process 'dryad :match-address (register)
+                                        :debug? t))
+           (dryad-address (process-public-address dryad)))
+      (simulation-add-event simulation (make-event :callback dryad))
       (blossom-let (original-tree :dryad dryad-address)
           ((A :id (id 0 2)
               :children (list (bb-edge A A B BLOSSOM))
@@ -265,6 +289,9 @@
                     :match-edge (bb-edge BLOSSOM B G G)
                     :positive? nil
                     :children (list (bb-edge BLOSSOM B G G))))
+        (setf (gethash (process-public-address BLOSSOM)
+                       (dryad-macrovertices dryad))
+              t)
         (let ((supervisor (supervisor simulation
                                       :edges (list (bb-edge BLOSSOM BLOSSOM
                                                             nil nil))
@@ -300,7 +327,8 @@
                         :positive? nil
                         :children (list (bb-edge BLOSSOM B G G))
                         :wilting T))
-            (is (tree-equalp original-tree target-tree))))))))
+            (is (tree-equalp original-tree target-tree))
+            (is (= 0 (hash-table-count (dryad-macrovertices dryad))))))))))
 
 (deftest test-supervisor-expand-blossom-blossom-barbell ()
   "Checks the transformation (! means match in vertical direction)
@@ -314,7 +342,10 @@
 "
   (with-with ((with-courier ())
               (with-simulation (simulation (*local-courier*))))
-    (let ((dryad-address (register)))
+    (let* ((dryad (spawn-process 'dryad :match-address (register)
+                                        :debug? t))
+           (dryad-address (process-public-address dryad)))
+      (simulation-add-event simulation (make-event :callback dryad))
       (blossom-let (original-tree :dryad dryad-address
                                   :positive? nil)
           ((A :id (id 0 0) :pistil BLOSSOM1)
@@ -335,6 +366,12 @@
                                    (vv-edge F D))
                      :match-edge (bb-edge BLOSSOM2 D B BLOSSOM1)
                      :positive? t))
+        (setf (gethash (process-public-address BLOSSOM1)
+                       (dryad-macrovertices dryad))
+              t)
+        (setf (gethash (process-public-address BLOSSOM2)
+                       (dryad-macrovertices dryad))
+              t)
         (send-message (process-public-address BLOSSOM1)
                       (anatevka::make-message-expand))
         (simulate-add-tree simulation original-tree)
@@ -362,4 +399,5 @@
                                      (vv-edge F D))
                        :match-edge (bb-edge BLOSSOM2 D B B)
                        :positive? t))
-          (is (tree-equalp original-tree target-tree)))))))
+          (is (tree-equalp original-tree target-tree))
+          (is (= 1 (hash-table-count (dryad-macrovertices dryad)))))))))

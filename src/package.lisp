@@ -36,6 +36,7 @@
    #:dryad-ids                          ; ACCESSOR
    #:dryad-sprouted?                    ; ACCESSOR
    #:dryad-shuffle?                     ; ACCESSOR
+   #:dryad-macrovertices                ; ACCESSOR
    #:vertex-vertex-distance             ; GENERIC FUNCTION
    
    ;; messages

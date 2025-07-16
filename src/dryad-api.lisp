@@ -1,7 +1,8 @@
 ;;;; dryad-api.lisp
 ;;;;
 ;;;; Specifies the message types used to communicate with the DRYAD.
-;;;; See dryad.lisp and matchmaker.lisp for information on the participants.
+;;;; See dryad.lisp, node.lisp, and supervisor.lisp for information
+;;;; on the participants.
 
 (in-package #:anatevka)
 
@@ -47,4 +48,14 @@ CHANNELS-TO-TRY: The addresses to send PINGs to."
 ;; NOTE: This message is essentially unused in the reference implementation, but it can be useful when implementing an online solver.
 (defstruct (message-wilting (:include message))
   "When a `BLOSSOM-NODE' wilts, it notifies its parent `DRYAD' to remove it from consideration."
+  (address nil :type address))
+
+(defstruct (message-remove-macrovertex (:include message))
+  "Instructs a `DRYAD' to remove `ADDRESS' from its set of `MACROVERTICES'."
+  (address nil :type address))
+
+;;; messages between the dryad and supervisors
+
+(defstruct (message-add-macrovertex (:include message))
+  "Instructs a `DRYAD' to add `ADDRESS' to its set of `MACROVERTICES'."
   (address nil :type address))

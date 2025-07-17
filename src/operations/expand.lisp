@@ -385,12 +385,12 @@ In the right diagram, b0 is both the `root-node' and the `matched-node', because
 
 (define-process-upkeep ((node blossom-node)) (EXTINGUISH-BLOSSOM reply-channel)
   "Tell this blossom process to die."
-  (sync-rpc (make-message-remove-macrovertex :address (process-public-address node))
-      (result (blossom-node-dryad node))
-    ;; NOTE: There's no data frame to pop.
-    (when reply-channel
-      (send-message reply-channel (make-message-rpc-done)))
-    (log-entry :entry-type ':blossom-extinguished
-               :log-level 2
-               :blossom node)
-    (setf (blossom-node-wilting node) t)))
+  (send-message (blossom-node-dryad node)
+                (make-message-remove-macrovertex :address (process-public-address node)))
+  ;; NOTE: There's no data frame to pop.
+  (when reply-channel
+    (send-message reply-channel (make-message-rpc-done)))
+  (log-entry :entry-type ':blossom-extinguished
+             :log-level 2
+             :blossom node)
+  (setf (blossom-node-wilting node) t))

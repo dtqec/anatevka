@@ -309,9 +309,12 @@ evalutes to
        ;; replies as they will break the logic below
        (when returned?
          (setf replies (remove nil replies)))
+       (when (endp replies)
+         (send-message (message-reply-channel message) (make-message-RTS))
+         (finish-handler))
        (send-message (message-reply-channel message)
                      (make-message-rpc-done
-                      :result (reduce #'min-id (rest replies))))))))
+                      :result (reduce #'min-id replies)))))))
 
 ;; When locked, a tree delays any replies to PING messages, lest a PONG reply be
 ;; calculated while the tree is in a dirty state. This on its own is too

@@ -1905,57 +1905,57 @@ d(B, D), d(H, J), d(N, P), d(U, W) = 2 and d(F, G), d(R, S) = 1 and d(L, M) = 2
                   :children (list (vv-edge L K))
                   :held-by-roots (list I))
                (M :id (id 15 2)
-                  :internal-weight 0
-                  :children (list (vv-edge M N))
-                  :held-by-roots (list P))
+                  :internal-weight 1
+                  :children (list (vv-edge M N)))
                (N :id (id 17 2)
                   :children (list (vv-edge N O))
-                  :internal-weight 2
+                  :internal-weight 1
                   :match-edge (vv-edge N O)
                   :parent (vv-edge N M)
                   :positive? nil)
                (O :id (id 19 2)
-                  :internal-weight 0
+                  :internal-weight 1
                   :match-edge (vv-edge O N)
                   :parent (vv-edge O N))
                (P :id (id 17 0)
-                  :internal-weight 0
-                  :children (list (vv-edge P Q))
-                  :held-by-roots (list M))
+                  :internal-weight 1
+                  :children (list (vv-edge P Q)))
                (Q :id (id 19 0)
                   :children (list (vv-edge Q R))
-                  :internal-weight 2
+                  :internal-weight 1
                   :match-edge (vv-edge Q R)
                   :parent (vv-edge Q P)
                   :positive? nil)
                (R :id (id 21 0)
-                  :internal-weight 0
+                  :internal-weight 1
                   :match-edge (vv-edge R Q)
                   :parent (vv-edge R Q))
                (S :id (id 22 0)
-                  :internal-weight 1
+                  :internal-weight 0
                   :match-edge (vv-edge S U)
                   :parent (vv-edge S U))
                (U :id (id 24 0)
                   :children (list (vv-edge U S))
-                  :internal-weight 1
+                  :internal-weight 2
                   :match-edge (vv-edge U S)
                   :parent (vv-edge U V)
                   :positive? nil)
                (V :id (id 26 0)
-                  :internal-weight 1
-                  :children (list (vv-edge V U)))
+                  :internal-weight 0
+                  :children (list (vv-edge V U))
+                  :held-by-roots (list Y))
                (W :id (id 24 2)
-                  :internal-weight 1
+                  :internal-weight 0
                   :match-edge (vv-edge W X)
                   :parent (vv-edge W X))
                (X :id (id 26 2)
                   :children (list (vv-edge X W))
-                  :internal-weight 1
+                  :internal-weight 2
                   :match-edge (vv-edge X W)
                   :parent (vv-edge X Y)
                   :positive? nil)
                (Y :id (id 28 2)
-                  :internal-weight 1
-                  :children (list (vv-edge Y X))))
+                  :internal-weight 0
+                  :children (list (vv-edge Y X))
+                  :held-by-roots (list V)))
             (is (tree-equalp original-tree target-tree))))))))

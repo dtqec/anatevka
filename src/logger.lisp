@@ -41,6 +41,30 @@
 
 (defmethod print-log-entry (entry
                             (source supervisor)
+                            (entry-type (eql ':checking-reweight))
+                            &optional (stream *standard-output*))
+  (format stream "~5f: [~a] checking if roots (~{~a~^ ~}) are clear to reweight by ~a~%"
+          (getf entry ':time)
+          (getf entry ':source)
+          (getf entry ':roots)
+          (getf entry ':weight)))
+
+(defmethod print-log-entry (entry
+                            (source supervisor)
+                            (entry-type (eql ':check-reweight-details))
+                            &optional (stream *standard-output*))
+  (format stream "~5f: [~a] checked if roots (~{~a~^ ~}) are clear to reweight by ~a and got pong ~a ~a ~{~a~^ ~} from ~a~%"
+          (getf entry ':time)
+          (getf entry ':source)
+          (getf entry ':roots)
+          (getf entry ':weight)
+          (getf entry ':check-pong-rec)
+          (getf entry ':check-pong-weight)
+          (getf entry ':check-pong-edges)
+          (getf entry ':check-pong-source)))
+
+(defmethod print-log-entry (entry
+                            (source supervisor)
                             (entry-type (eql ':reweighting))
                             &optional (stream *standard-output*))
   (format stream "~5f: [~a] reweighting roots (~{~a~^ ~}) by ~a~%"
@@ -51,13 +75,46 @@
 
 (defmethod print-log-entry (entry
                             (source supervisor)
-                            (entry-type (eql ':rewinding))
+                            (entry-type (eql ':reweighting-finished))
                             &optional (stream *standard-output*))
-  (format stream "~5f: [~a] rewinding roots (~{~a~^ ~}) by ~a~%"
+  (format stream "~5f: [~a] finished reweighting roots (~{~a~^ ~}) by ~a~%"
           (getf entry ':time)
           (getf entry ':source)
           (getf entry ':roots)
-          (getf entry ':amount)))
+          (getf entry ':weight)))
+
+(defmethod print-log-entry (entry
+                            (source supervisor)
+                            (entry-type (eql ':checking-rewinding))
+                            &optional (stream *standard-output*))
+  (format stream "~5f: [~a] checking if roots (~{~a~^ ~}) need to rewind~%"
+          (getf entry ':time)
+          (getf entry ':source)
+          (getf entry ':roots)))
+
+(defmethod print-log-entry (entry
+                            (source supervisor)
+                            (entry-type (eql ':check-rewinding-details))
+                            &optional (stream *standard-output*))
+  (format stream "~5f: [~a] checked if roots (~{~a~^ ~}) need to rewind and got pong ~a ~a ~{~a~^ ~} from ~a~%"
+          (getf entry ':time)
+          (getf entry ':source)
+          (getf entry ':roots)
+          (getf entry ':rewinding-pong-rec)
+          (getf entry ':minimum-weight-edge)
+          (getf entry ':rewinding-pong-edges)
+          (getf entry ':rewinding-pong-source)))
+
+(defmethod print-log-entry (entry
+                            (source supervisor)
+                            (entry-type (eql ':rewinding))
+                            &optional (stream *standard-output*))
+  (format stream "~5f: [~a] rewinding roots (~{~a~^ ~}) by ~a (overall: ~a)~%"
+          (getf entry ':time)
+          (getf entry ':source)
+          (getf entry ':roots)
+          (getf entry ':amount)
+          (getf entry ':overall)))
 
 (defmethod print-log-entry (entry
                             (source supervisor)

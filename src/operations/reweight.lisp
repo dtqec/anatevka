@@ -144,6 +144,10 @@
                (make-message-soft-scan :weight 0
                                        :internal-roots roots
                                        :strategy ':STAY)))
+        (log-entry :entry-type ':checking-reweight
+                   :log-level 1
+                   :roots roots
+                   :weight original-weight)
         (with-replies (replies
                        :message-type message-pong
                        :message-unpacker identity)
@@ -170,7 +174,10 @@
     (flet ((payload-constructor ()
              (make-message-broadcast-reweight :weight weight)))
       (with-replies (replies) (send-message-batch #'payload-constructor roots)
-        nil))))
+        (log-entry :entry-type ':reweighting-finished
+                   :log-level 1
+                   :weight weight
+                   :roots roots)))))
 
 (define-process-upkeep ((supervisor supervisor))
     (CHECK-REWINDING roots original-pong carry)
@@ -182,6 +189,10 @@
           (original-amount (message-pong-weight original-pong)))
       (flet ((payload-constructor ()
                (make-message-soft-scan :weight 0 :strategy ':STAY)))
+        (log-entry :entry-type ':checking-rewinding
+                   :log-level 1
+                   :roots roots
+                   :weight original-amount)
         (with-replies (replies
                        :returned? returned?
                        :message-type message-pong
@@ -192,12 +203,17 @@
           ;; The `maximum-rewinding' variable tracks how much is left to
           ;; potentially rewind from the initial recommendation reweighting.
           (let ((maximum-rewinding (- original-amount carry))
-                (minimum-weight-edge (message-pong-weight rewinding-pong)))
+                (minimum-weight-edge (message-pong-weight rewinding-pong))
+                (rewinding-pong-rec (message-pong-recommendation rewinding-pong))
+                (rewinding-pong-edges (message-pong-edges rewinding-pong))
+                (rewinding-pong-source (message-pong-source-root rewinding-pong)))
             (log-entry :entry-type ':check-rewinding-details
-                       :original-amount original-amount
-                       :carry carry
+                       :log-level 1
+                       :roots roots
                        :minimum-weight-edge minimum-weight-edge
-                       :rewinding-pong rewinding-pong)
+                       :rewinding-pong-rec rewinding-pong-rec
+                       :rewinding-pong-edges rewinding-pong-edges
+                       :rewinding-pong-source rewinding-pong-source)
             (when (minusp minimum-weight-edge)
               ;; When we encounter a negative-weight edge, this means that
               ;; our reweighting operation happened at the same time as another
@@ -224,9 +240,8 @@
                   (log-entry :entry-type ':rewinding
                              :log-level 2
                              :roots roots
-                             :amount rewinding-amount
-                             :overall new-carry
-                             :recommendation original-amount)
+                             :amount (- rewinding-amount)
+                             :overall new-carry)
                   ;; If the rewinding amount is such that we are not fully
                   ;; backtracking, check ourselves again and respond accordingly.
                   (when (< (- rewinding-amount) maximum-rewinding)

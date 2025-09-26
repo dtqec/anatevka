@@ -189,14 +189,14 @@ After collecting the `hold-cluster', we then `CHECK-PRIORITY' to determine if we
               ;; if our best recommendation is zero, we also abort the MRW
               ((zerop (message-pong-weight internal-pong))
                (log-entry :entry-type ':aborting-multireweight-zero-pong
-                         :log-level 1
-                         :source-root source-root
-                         :source-id source-id
-                         :target-root target-root
-                         :weight weight
-                         :edges edges
-                         :recommendation recommendation
-                         :hold-cluster roots)
+                          :log-level 1
+                          :source-root source-root
+                          :source-id source-id
+                          :target-root target-root
+                          :weight weight
+                          :edges edges
+                          :recommendation recommendation
+                          :hold-cluster roots)
                (setf (process-lockable-aborting? supervisor) t)))))))))
 
 (define-process-upkeep ((supervisor supervisor)) (GATHER-TARGETS-MULTIREWEIGHT)

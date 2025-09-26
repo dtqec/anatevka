@@ -130,24 +130,24 @@ When INTERNAL-ROOT-SET is supplied, discard HOLD recommendations which emanate f
         ((and (eql ':hold y-rec)
               (member y-root internal-root-set :test #'address=))
          x)
-        ;; prefer non-zero `AUGMENT's (which become `REWEIGHT's) to other
-        ;; equal-weight recommendations to avoid rewinding livelock scenarios
-        ((and (eql ':augment x-rec)
-              (not (zerop x-weight))
-              (eql x-weight y-weight))
-         x)
-        ((and (eql ':augment y-rec)
-              (not (zerop y-weight))
-              (eql x-weight y-weight))
-         y)
-        ;; if we're both (`HOLD' 0)ing, aggregate the target root set
-        ((and (eql ':hold x-rec) (zerop x-weight)
-              (eql ':hold y-rec) (zerop y-weight))
+        ;; if we're both `HOLD'ing with the same weight, then aggregate
+        ;; the root-bucket of each pong
+        ((and (eql ':hold x-rec) (eql ':hold y-rec) (= x-weight y-weight))
          (initialize-and-return ((pong (copy-message-pong x)))
            (setf (message-pong-root-bucket pong)
                  (remove-duplicates (union (message-pong-root-bucket x)
                                            (message-pong-root-bucket y))
                                     :test #'address=))))
+        ;; prefer non-zero `HOLD's (which become `REWEIGHT's) to other
+        ;; equal-weight recommendations to avoid rewinding-related problems
+        ((and (eql ':hold x-rec)
+              (not (zerop x-weight))
+              (eql x-weight y-weight))
+         x)
+        ((and (eql ':hold y-rec)
+              (not (zerop y-weight))
+              (eql x-weight y-weight))
+         y)
         ;; (`HOLD' 0) is an expensive operation: either we idle or we have to
         ;; coordinate across multiple trees.  prefer easier actions.
         ((and (eql ':hold x-rec)

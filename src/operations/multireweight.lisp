@@ -267,7 +267,7 @@ After collecting the `hold-cluster', we then `CHECK-PRIORITY' to determine if we
     (unless (process-lockable-aborting? supervisor)
       (flet ((payload-constructor ()
                (make-message-set :slots '(held-by-roots) :values `(,nil))))
-        (with-replies (replies)
+        (with-replies (replies :returned? returned?)
                       (send-message-batch #'payload-constructor hold-cluster))))))
 
 ;;;

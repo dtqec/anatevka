@@ -145,7 +145,8 @@
   (unless (process-lockable-aborting? supervisor)
     (let ((check-pong nil)
           (original-weight (message-pong-weight original-pong))
-          (original-rec (message-pong-recommendation original-pong)))
+          (original-rec (message-pong-recommendation original-pong))
+          (original-target (message-pong-target-root original-pong)))
       (flet ((payload-constructor ()
                (make-message-soft-scan :weight 0
                                        :internal-roots roots
@@ -163,7 +164,7 @@
           (let ((check-pong-rec (message-pong-recommendation check-pong))
                 (check-pong-weight (message-pong-weight check-pong))
                 (check-pong-edges (message-pong-edges check-pong))
-                (check-pong-source (message-pong-source-root check-pong)))
+                (check-pong-target (message-pong-target-root check-pong)))
             (log-entry :entry-type ':check-reweight-details
                        :log-level 1
                        :roots roots
@@ -171,19 +172,22 @@
                        :check-pong-rec check-pong-rec
                        :check-pong-weight check-pong-weight
                        :check-pong-edges check-pong-edges
-                       :check-pong-source check-pong-source)
+                       :check-pong-target check-pong-target)
             (when (< check-pong-weight original-weight)
               (log-entry :entry-type ':check-reweight-aborting-lower-weight
                          :log-level 1
                          :original-weight original-weight
                          :check-pong-weight check-pong-weight)
               (setf (process-lockable-aborting? supervisor) t))
-            (when (and (eql ':hold check-pong-rec)
-                       (not (eql check-pong-rec original-rec)))
+            (when (and (not (address= original-target check-pong-target))
+                       (not (eql check-pong-rec original-rec))
+                       (eql ':hold check-pong-rec))
               (log-entry :entry-type ':check-reweight-aborting-lower-precedence
                          :log-level 1
                          :original-rec original-rec
-                         :check-pong-rec check-pong-rec)
+                         :original-target original-target
+                         :check-pong-rec check-pong-rec
+                         :check-pong-target check-pong-target)
               (setf (process-lockable-aborting? supervisor) t))))))))
 
 (define-process-upkeep ((supervisor supervisor))

@@ -354,6 +354,9 @@ NOTE: this command is only installed when NODE is a vertex."
                    :weight weight
                    :id (blossom-node-id node)
                    :internal-roots internal-roots)))))
+        (log-entry :entry-type ':pinging-vertices
+                   :log-level 1
+                   :vertices vertices)
         (with-replies (replies
                        :returned? returned?
                        :message-type message-pong
@@ -366,7 +369,27 @@ NOTE: this command is only installed when NODE is a vertex."
                         (let ((edge (car (last (message-pong-edges reply)))))
                           (setf (blossom-edge-source-vertex edge) (process-public-address node)
                                 (blossom-edge-source-node edge) local-blossom)))
-                      (setf pong (unify-pongs reply pong :internal-root-set internal-roots))))))))
+                      (let ((reply-pong-rec (message-pong-recommendation reply))
+                            (reply-pong-weight (message-pong-weight reply))
+                            (reply-pong-edges (message-pong-edges reply))
+                            (reply-pong-source (message-pong-source-root reply)))
+                        (log-entry :entry-type ':processing-reply-pong
+                                   :log-level 1
+                                   :reply-pong-rec reply-pong-rec
+                                   :reply-pong-weight reply-pong-weight
+                                   :reply-pong-edges reply-pong-edges
+                                   :reply-pong-source reply-pong-source))
+                      (setf pong (unify-pongs reply pong :internal-root-set internal-roots)))
+          (let ((unified-pong-rec (message-pong-recommendation pong))
+                (unified-pong-weight (message-pong-weight pong))
+                (unified-pong-edges (message-pong-edges pong))
+                (unified-pong-source (message-pong-source-root pong)))
+            (log-entry :entry-type ':unified-reply-pong
+                       :log-level 1
+                       :unified-pong-rec unified-pong-rec
+                       :unified-pong-weight unified-pong-weight
+                       :unified-pong-edges unified-pong-edges
+                       :unified-pong-source unified-pong-source)))))))
 
 (define-process-upkeep ((node blossom-node)) (FINISH-SCAN reply-channel)
   "Finalize the SCAN procedure's stack frames. this includes forwarding the result to a parent if one instigated the SCAN procedure, or spawning a new SUPERVISOR process to handle the result if this SCAN was spontaneous."

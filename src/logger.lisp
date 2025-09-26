@@ -19,6 +19,39 @@
           (getf entry ':id)))
 
 (defmethod print-log-entry (entry
+                            (source blossom-node)
+                            (entry-type (eql ':pinging-vertices))
+                            &optional (stream *standard-output*))
+  (format stream "~5f: [~a] pinging vertices ~{~a~^ ~}~%"
+          (getf entry ':time)
+          (getf entry ':source)
+          (getf entry ':vertices)))
+
+(defmethod print-log-entry (entry
+                            (source blossom-node)
+                            (entry-type (eql ':processing-reply-pong))
+                            &optional (stream *standard-output*))
+  (format stream "~5f: [~a] processing reply pong ~a ~a ~{~a~^ ~} from ~a~%"
+          (getf entry ':time)
+          (getf entry ':source)
+          (getf entry ':reply-pong-rec)
+          (getf entry ':reply-pong-weight)
+          (getf entry ':reply-pong-edges)
+          (getf entry ':reply-pong-source)))
+
+(defmethod print-log-entry (entry
+                            (source blossom-node)
+                            (entry-type (eql ':unified-reply-pong))
+                            &optional (stream *standard-output*))
+  (format stream "~5f: [~a] unified pong is ~a ~a ~{~a~^ ~} from ~a~%"
+          (getf entry ':time)
+          (getf entry ':source)
+          (getf entry ':unified-pong-rec)
+          (getf entry ':unified-pong-weight)
+          (getf entry ':unified-pong-edges)
+          (getf entry ':unified-pong-source)))
+
+(defmethod print-log-entry (entry
                             (source supervisor)
                             (entry-type (eql ':got-recommendation))
                             &optional (stream *standard-output*))

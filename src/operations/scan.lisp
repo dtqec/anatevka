@@ -372,24 +372,24 @@ NOTE: this command is only installed when NODE is a vertex."
                       (let ((reply-pong-rec (message-pong-recommendation reply))
                             (reply-pong-weight (message-pong-weight reply))
                             (reply-pong-edges (message-pong-edges reply))
-                            (reply-pong-source (message-pong-source-root reply)))
+                            (reply-pong-target (message-pong-target-root reply)))
                         (log-entry :entry-type ':processing-reply-pong
                                    :log-level 1
                                    :reply-pong-rec reply-pong-rec
                                    :reply-pong-weight reply-pong-weight
                                    :reply-pong-edges reply-pong-edges
-                                   :reply-pong-source reply-pong-source))
+                                   :reply-pong-target reply-pong-target))
                       (setf pong (unify-pongs reply pong :internal-root-set internal-roots)))
           (let ((unified-pong-rec (message-pong-recommendation pong))
                 (unified-pong-weight (message-pong-weight pong))
                 (unified-pong-edges (message-pong-edges pong))
-                (unified-pong-source (message-pong-source-root pong)))
+                (unified-pong-target (message-pong-target-root pong)))
             (log-entry :entry-type ':unified-reply-pong
                        :log-level 1
                        :unified-pong-rec unified-pong-rec
                        :unified-pong-weight unified-pong-weight
                        :unified-pong-edges unified-pong-edges
-                       :unified-pong-source unified-pong-source)))))))
+                       :unified-pong-target unified-pong-target)))))))
 
 (define-process-upkeep ((node blossom-node)) (FINISH-SCAN reply-channel)
   "Finalize the SCAN procedure's stack frames. this includes forwarding the result to a parent if one instigated the SCAN procedure, or spawning a new SUPERVISOR process to handle the result if this SCAN was spontaneous."

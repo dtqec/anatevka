@@ -37,7 +37,7 @@
           (getf entry ':reply-pong-rec)
           (getf entry ':reply-pong-weight)
           (getf entry ':reply-pong-edges)
-          (getf entry ':reply-pong-source)))
+          (getf entry ':reply-pong-target)))
 
 (defmethod print-log-entry (entry
                             (source blossom-node)
@@ -49,7 +49,7 @@
           (getf entry ':unified-pong-rec)
           (getf entry ':unified-pong-weight)
           (getf entry ':unified-pong-edges)
-          (getf entry ':unified-pong-source)))
+          (getf entry ':unified-pong-target)))
 
 (defmethod print-log-entry (entry
                             (source supervisor)
@@ -94,7 +94,7 @@
           (getf entry ':check-pong-rec)
           (getf entry ':check-pong-weight)
           (getf entry ':check-pong-edges)
-          (getf entry ':check-pong-source)))
+          (getf entry ':check-pong-target)))
 
 (defmethod print-log-entry (entry
                             (source supervisor)
@@ -156,7 +156,7 @@
           (getf entry ':rewinding-pong-rec)
           (getf entry ':minimum-weight-edge)
           (getf entry ':rewinding-pong-edges)
-          (getf entry ':rewinding-pong-source)))
+          (getf entry ':rewinding-pong-target)))
 
 (defmethod print-log-entry (entry
                             (source supervisor)

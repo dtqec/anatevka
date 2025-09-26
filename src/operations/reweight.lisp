@@ -233,14 +233,14 @@
                 (minimum-weight-edge (message-pong-weight rewinding-pong))
                 (rewinding-pong-rec (message-pong-recommendation rewinding-pong))
                 (rewinding-pong-edges (message-pong-edges rewinding-pong))
-                (rewinding-pong-source (message-pong-source-root rewinding-pong)))
+                (rewinding-pong-target (message-pong-target-root rewinding-pong)))
             (log-entry :entry-type ':check-rewinding-details
                        :log-level 1
                        :roots roots
                        :minimum-weight-edge minimum-weight-edge
                        :rewinding-pong-rec rewinding-pong-rec
                        :rewinding-pong-edges rewinding-pong-edges
-                       :rewinding-pong-source rewinding-pong-source)
+                       :rewinding-pong-target rewinding-pong-target)
             (when (minusp minimum-weight-edge)
               ;; When we encounter a negative-weight edge, this means that
               ;; our reweighting operation happened at the same time as another

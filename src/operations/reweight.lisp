@@ -144,7 +144,8 @@
   "Because `CHECK-PONG' doesn't do a global check, we potentially can end up with a reweighting when we shouldn't. This fixes that by making sure that there are no lower-weight recommendations available before we begin reweighting."
   (unless (process-lockable-aborting? supervisor)
     (let ((check-pong nil)
-          (original-weight (message-pong-weight original-pong)))
+          (original-weight (message-pong-weight original-pong))
+          (original-rec (message-pong-recommendation original-pong)))
       (flet ((payload-constructor ()
                (make-message-soft-scan :weight 0
                                        :internal-roots roots
@@ -159,14 +160,31 @@
                       (send-message-batch #'payload-constructor roots)
           (loop :for reply :in replies :unless (null reply)
                 :do (setf check-pong (unify-pongs check-pong reply)))
-          (log-entry :entry-type ':check-reweight-details
-                     :original-pong original-pong
-                     :check-pong check-pong)
-          (when (< (message-pong-weight check-pong) original-weight)
-            (log-entry :entry-type ':check-reweight-aborting
-                       :original-pong original-pong
-                       :check-pong check-pong)
-            (setf (process-lockable-aborting? supervisor) t)))))))
+          (let ((check-pong-rec (message-pong-recommendation check-pong))
+                (check-pong-weight (message-pong-weight check-pong))
+                (check-pong-edges (message-pong-edges check-pong))
+                (check-pong-source (message-pong-source-root check-pong)))
+            (log-entry :entry-type ':check-reweight-details
+                       :log-level 1
+                       :roots roots
+                       :weight original-weight
+                       :check-pong-rec check-pong-rec
+                       :check-pong-weight check-pong-weight
+                       :check-pong-edges check-pong-edges
+                       :check-pong-source check-pong-source)
+            (when (< check-pong-weight original-weight)
+              (log-entry :entry-type ':check-reweight-aborting-lower-weight
+                         :log-level 1
+                         :original-weight original-weight
+                         :check-pong-weight check-pong-weight)
+              (setf (process-lockable-aborting? supervisor) t))
+            (when (and (eql ':hold check-pong-rec)
+                       (not (eql check-pong-rec original-rec)))
+              (log-entry :entry-type ':check-reweight-aborting-lower-precedence
+                         :log-level 1
+                         :original-rec original-rec
+                         :check-pong-rec check-pong-rec)
+              (setf (process-lockable-aborting? supervisor) t))))))))
 
 (define-process-upkeep ((supervisor supervisor))
     (BROADCAST-REWEIGHT roots weight)

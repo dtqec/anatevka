@@ -82,28 +82,33 @@
   "Before entering the critical section, we must determine which roots we should lock. If our target-root is not NIL, we need to lock it and the hold cluster it is contained within (if any). NB: This is only relevant to non-weightless operations (reweight and multireweight)."
   (unless (process-lockable-aborting? supervisor)
     (with-slots (pong targets) (peek (process-data-stack supervisor))
-      (with-slots (source-root target-root) pong
+      (with-slots (source-root target-root root-bucket) pong
         (push source-root targets)
         ;; the contents of `targets' depend on the recommendation. it always
         ;; includes the `source-root', and additionally
         ;;  - `AUGMENT': the `target-root' (and potentially its hold cluster)
         ;;  - `GRAFT': one end of the barbell
         ;;  - `EXPAND' or `CONTRACT': nothing
+        ;;  - `HOLD': same as `AUGMENT' + other unique roots in `root-bucket'
         (log-entry :entry-type ':gathering-targets
                    :pong (copy-message-pong pong)
                    :source-root source-root
                    :target-root target-root
+                   :root-bucket root-bucket
                    :targets targets)
         (unless (null target-root)
           (sync-rpc (make-message-convergecast-collect-roots)
               (target-cluster target-root :returned? returned?)
             (setf targets (remove-duplicates
-                           (append (list source-root target-root) target-cluster)
+                           (append (list source-root target-root)
+                                   target-cluster
+                                   root-bucket)
                            :test #'address=))
             (log-entry :entry-type ':collected-target-cluster
                        :source-root source-root
                        :target-root target-root
                        :target-cluster target-cluster
+                       :root-bucket root-bucket
                        :targets targets)))))))
 
 (define-process-upkeep ((supervisor supervisor)) (START-INNER-REWEIGHT)

@@ -143,51 +143,64 @@
 (define-process-upkeep ((supervisor supervisor)) (CHECK-REWEIGHT roots original-pong)
   "Because `CHECK-PONG' doesn't do a global check, we potentially can end up with a reweighting when we shouldn't. This fixes that by making sure that there are no lower-weight recommendations available before we begin reweighting."
   (unless (process-lockable-aborting? supervisor)
-    (let ((check-pong nil))
-      (with-slots ((original-rec recommendation) (original-weight weight)
-                   (original-target target-root))
-          original-pong
-        (flet ((payload-constructor ()
-                 (make-message-soft-scan :weight 0
-                                         :internal-roots roots
-                                         :strategy ':STAY)))
-          (log-entry :entry-type ':checking-reweight
-                     :log-level 1
-                     :roots roots
-                     :weight original-weight)
-          (with-replies (replies
-                         :message-type message-pong
-                         :message-unpacker identity)
-                        (send-message-batch #'payload-constructor roots)
-            (loop :for reply :in replies :unless (null reply)
-                  :do (setf check-pong (unify-pongs check-pong reply)))
-            (with-slots ((check-pong-rec recommendation) (check-pong-weight weight)
-                         (check-pong-edges edges) (check-pong-target target-root))
-                check-pong
-              (log-entry :entry-type ':check-reweight-details
-                         :log-level 1
-                         :roots roots
-                         :weight original-weight
-                         :check-pong-rec check-pong-rec
-                         :check-pong-weight check-pong-weight
-                         :check-pong-edges check-pong-edges
-                         :check-pong-target check-pong-target)
-              (when (< check-pong-weight original-weight)
-                (log-entry :entry-type ':check-reweight-aborting-lower-weight
+    (with-slots (targets) (peek (process-data-stack supervisor))
+      (let ((check-pong nil))
+        (with-slots ((original-rec recommendation) (original-weight weight)
+                     (original-target target-root))
+            original-pong
+          (flet ((payload-constructor ()
+                   (make-message-soft-scan :weight 0
+                                           :internal-roots roots
+                                           :strategy ':STAY)))
+            (log-entry :entry-type ':checking-reweight
+                       :log-level 1
+                       :roots roots
+                       :weight original-weight)
+            (with-replies (replies
+                           :message-type message-pong
+                           :message-unpacker identity)
+                          (send-message-batch #'payload-constructor roots)
+              (loop :for reply :in replies :unless (null reply)
+                    :do (setf check-pong (unify-pongs check-pong reply)))
+              (with-slots ((check-pong-rec recommendation) (check-pong-weight weight)
+                           (check-pong-edges edges) (check-pong-target target-root))
+                  check-pong
+                (log-entry :entry-type ':check-reweight-details
                            :log-level 1
-                           :original-weight original-weight
-                           :check-pong-weight check-pong-weight)
-                (setf (process-lockable-aborting? supervisor) t))
-              (when (and (not (address= original-target check-pong-target))
-                         (not (eql check-pong-rec original-rec))
-                         (eql ':hold check-pong-rec))
-                (log-entry :entry-type ':check-reweight-aborting-lower-precedence
-                           :log-level 1
-                           :original-rec original-rec
-                           :original-target original-target
+                           :roots roots
+                           :weight original-weight
                            :check-pong-rec check-pong-rec
+                           :check-pong-weight check-pong-weight
+                           :check-pong-edges check-pong-edges
                            :check-pong-target check-pong-target)
-                (setf (process-lockable-aborting? supervisor) t)))))))))
+                ;; if the check-pong weight is lower, abort
+                (when (< check-pong-weight original-weight)
+                  (log-entry :entry-type ':check-reweight-aborting-lower-weight
+                             :log-level 1
+                             :original-weight original-weight
+                             :check-pong-weight check-pong-weight)
+                  (setf (process-lockable-aborting? supervisor) t))
+                ;; if the check-pong rec is HOLD now but it wasn't originally, abort
+                (when (and (eql ':hold check-pong-rec)
+                           (not (eql check-pong-rec original-rec))
+                           (not (address= original-target check-pong-target)))
+                  (log-entry :entry-type ':check-reweight-aborting-lower-precedence
+                             :log-level 1
+                             :original-rec original-rec
+                             :original-target original-target
+                             :check-pong-rec check-pong-rec
+                             :check-pong-target check-pong-target)
+                  (setf (process-lockable-aborting? supervisor) t))
+                ;; if the check-pong rec is HOLD from a root not in targets, abort
+                (when (and (eql ':hold check-pong-rec)
+                           (not (member check-pong-target targets :test #'address=)))
+                  (log-entry :entry-type ':check-reweight-aborting-new-root
+                             :log-level 1
+                             :original-rec original-rec
+                             :original-target original-target
+                             :check-pong-rec check-pong-rec
+                             :check-pong-target check-pong-target
+                             :targets targets))))))))))
 
 (define-process-upkeep ((supervisor supervisor))
     (BROADCAST-REWEIGHT roots weight)

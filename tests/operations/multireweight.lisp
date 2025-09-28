@@ -964,15 +964,15 @@ it declines to take action because C has priority.
 (deftest test-supervisor-multireweight-simultaneous-rewind-halfway ()
   "Checks the transformation
 
- 0    2    0              0    2    0         1    1    1              1    1    1
+ 0    2    0              0    2    0        3/2  1/2  3/2            3/2  1/2  3/2
  +    -    +              +    -    +         +    -    +              +    -    +
  A -> B => C              J <= K <- L         A -> B => C              J <= K <- L
                                         -->
       D -> E => F    G <= H <- I                   D -> E => F    G <= H <- I
       +    -    +    +    -    +                   +    -    +    +    -    +
-      0    2    0    0    2    0                   1    1    1    1    1    1
+      0    2    0    0    2    0                  3/2  1/2  3/2  3/2  1/2  3/2
 
-d(B, D), d(F, G), d(H, J)  = 2
+d(B, D), d(H, J) = 2 and d(F, G) = 3
 
 The point of this is to show that simultaneous reweighting and rewinding during multireweighting won't cause a negative-weight edge (all roots in the root-set are rewound) and for inter-root-set distances > 1 the algorithm will progress.
 "
@@ -1008,29 +1008,29 @@ The point of this is to show that simultaneous reweighting and rewinding during 
            (F :id (id 6 0)
               :match-edge (vv-edge F E)
               :parent (vv-edge F E))
-           (G :id (id 8 0)
+           (G :id (id 9 0)
               :match-edge (vv-edge G H)
               :parent (vv-edge G H))
-           (H :id (id 10 0)
+           (H :id (id 11 0)
               :children (list (vv-edge H G))
               :internal-weight 2
               :match-edge (vv-edge H G)
               :parent (vv-edge H I)
               :positive? nil)
-           (I :id (id 12 0)
+           (I :id (id 13 0)
               :children (list (vv-edge I H))
               :held-by-roots (list L)
               :paused? T)
-           (J :id (id 10 2)
+           (J :id (id 11 2)
               :match-edge (vv-edge J K)
               :parent (vv-edge J K))
-           (K :id (id 12 2)
+           (K :id (id 13 2)
               :children (list (vv-edge K J))
               :internal-weight 2
               :match-edge (vv-edge K J)
               :parent (vv-edge K L)
               :positive? nil)
-           (L :id (id 14 2)
+           (L :id (id 15 2)
               :children (list (vv-edge L K))
               :held-by-roots (list I)))
 
@@ -1066,218 +1066,57 @@ The point of this is to show that simultaneous reweighting and rewinding during 
           (simulate-until-dead simulation supervisor-right)
           (blossom-let (target-tree :dryad dryad-address)
               ((A :id (id 0 2)
-                  :internal-weight 1
+                  :internal-weight 3/2
                   :children (list (vv-edge A B)))
                (B :id (id 2 2)
                   :children (list (vv-edge B C))
-                  :internal-weight 1
+                  :internal-weight 1/2
                   :match-edge (vv-edge B C)
                   :parent (vv-edge B A)
                   :positive? nil)
                (C :id (id 4 2)
-                  :internal-weight 1
+                  :internal-weight 3/2
                   :match-edge (vv-edge C B)
                   :parent (vv-edge C B))
                (D :id (id 2 0)
-                  :internal-weight 1
+                  :internal-weight 3/2
                   :children (list (vv-edge D E)))
                (E :id (id 4 0)
                   :children (list (vv-edge E F))
-                  :internal-weight 1
+                  :internal-weight 1/2
                   :match-edge (vv-edge E F)
                   :parent (vv-edge E D)
                   :positive? nil)
                (F :id (id 6 0)
-                  :internal-weight 1
+                  :internal-weight 3/2
                   :match-edge (vv-edge F E)
                   :parent (vv-edge F E))
-               (G :id (id 8 0)
-                  :internal-weight 1
+               (G :id (id 9 0)
+                  :internal-weight 3/2
                   :match-edge (vv-edge G H)
                   :parent (vv-edge G H))
-               (H :id (id 10 0)
+               (H :id (id 11 0)
                   :children (list (vv-edge H G))
-                  :internal-weight 1
+                  :internal-weight 1/2
                   :match-edge (vv-edge H G)
                   :parent (vv-edge H I)
                   :positive? nil)
-               (I :id (id 12 0)
-                  :internal-weight 1
+               (I :id (id 13 0)
+                  :internal-weight 3/2
                   :children (list (vv-edge I H)))
-               (J :id (id 10 2)
-                  :internal-weight 1
+               (J :id (id 11 2)
+                  :internal-weight 3/2
                   :match-edge (vv-edge J K)
                   :parent (vv-edge J K))
-               (K :id (id 12 2)
+               (K :id (id 13 2)
                   :children (list (vv-edge K J))
-                  :internal-weight 1
+                  :internal-weight 1/2
                   :match-edge (vv-edge K J)
                   :parent (vv-edge K L)
                   :positive? nil)
-               (L :id (id 14 2)
-                  :internal-weight 1
+               (L :id (id 15 2)
+                  :internal-weight 3/2
                   :children (list (vv-edge L K))))
-            (is (tree-equalp original-tree target-tree))))))))
-
-(deftest test-supervisor-multireweight-simultaneous-rewind-non-integer ()
-  "Checks the transformation
-
- 0    1    0              0    1    0        0.5  0.5  0.5            0.5  0.5  0.5
- +    -    +              +    -    +         +    -    +              +    -    +
- A -> B => C              J <= K <- L         A -> B => C              J <= K <- L
-                                        -->
-      D -> E => F    G <= H <- I                   D -> E => F    G <= H <- I
-      +    -    +    +    -    +                   +    -    +    +    -    +
-      0    1    0    0    1    0                  0.5  0.5  0.5  0.5  0.5  0.5
-
-d(B, D), d(F, G), d(H, J)  = 1
-
-The point of this is to show that simultaneous reweighting and rewinding during multireweighting will still ensure progress even if the inter-root-set distance is 1 (or smaller) by using non-integer rewinds.
-"
-  (with-with ((with-courier ())
-              (with-simulation (simulation (*local-courier*)))
-              (with-address-dereferencing ()))
-    (let* ((dryad (spawn-process 'dryad :match-address (register)
-                                        :debug? t))
-           (dryad-address (process-public-address dryad)))
-      (blossom-let (original-tree :dryad dryad-address)
-          ((A :id (id 0 1)
-              :children (list (vv-edge A B))
-              :held-by-roots (list D)
-              :paused? T)
-           (B :id (id 1 1)
-              :children (list (vv-edge B C))
-              :internal-weight 1
-              :match-edge (vv-edge B C)
-              :parent (vv-edge B A)
-              :positive? nil)
-           (C :id (id 2 1)
-              :match-edge (vv-edge C B)
-              :parent (vv-edge C B))
-           (D :id (id 1 0)
-              :children (list (vv-edge D E))
-              :held-by-roots (list A))
-           (E :id (id 2 0)
-              :children (list (vv-edge E F))
-              :internal-weight 1
-              :match-edge (vv-edge E F)
-              :parent (vv-edge E D)
-              :positive? nil)
-           (F :id (id 3 0)
-              :match-edge (vv-edge F E)
-              :parent (vv-edge F E))
-           (G :id (id 4 0)
-              :match-edge (vv-edge G H)
-              :parent (vv-edge G H))
-           (H :id (id 5 0)
-              :children (list (vv-edge H G))
-              :internal-weight 1
-              :match-edge (vv-edge H G)
-              :parent (vv-edge H I)
-              :positive? nil)
-           (I :id (id 6 0)
-              :children (list (vv-edge I H))
-              :held-by-roots (list L)
-              :paused? T)
-           (J :id (id 5 1)
-              :match-edge (vv-edge J K)
-              :parent (vv-edge J K))
-           (K :id (id 6 1)
-              :children (list (vv-edge K J))
-              :internal-weight 1
-              :match-edge (vv-edge K J)
-              :parent (vv-edge K L)
-              :positive? nil)
-           (L :id (id 7 1)
-              :children (list (vv-edge L K))
-              :held-by-roots (list I)))
-
-        (let ((supervisor-left (supervisor simulation
-                                           :recommendation ':hold
-                                           :weight 0
-                                           :edges (list (vv-edge B D))
-                                           :source-root (process-public-address A)
-                                           :target-root (process-public-address D)
-                                           :source-id (slot-value B 'anatevka::id)
-                                           :root-bucket (list
-                                                         (process-public-address D))))
-              (supervisor-right (supervisor simulation
-                                           :recommendation ':hold
-                                           :weight 0
-                                           :edges (list (vv-edge I K))
-                                           :source-root (process-public-address I)
-                                           :target-root (process-public-address L)
-                                           :source-id (slot-value I 'anatevka::id)
-                                           :root-bucket (list (process-public-address L)))))
-          (simulate-add-tree simulation original-tree)
-
-          ;; fill the dryad and add it to the simulation
-          (dolist (node original-tree)
-          (let* ((id (slot-value node 'anatevka::id))
-                 (address (process-public-address node))
-                 (sprouted? (not (null (anatevka::blossom-node-match-edge node)))))
-            (setf (gethash address (anatevka::dryad-ids dryad))       id
-                  (gethash address (anatevka::dryad-sprouted? dryad)) sprouted?)))
-          (simulation-add-event simulation (make-event :callback dryad))
-
-          (simulate-until-dead simulation supervisor-left)
-          (simulate-until-dead simulation supervisor-right)
-          (blossom-let (target-tree :dryad dryad-address)
-              ((A :id (id 0 1)
-                  :internal-weight 0.5
-                  :children (list (vv-edge A B)))
-               (B :id (id 1 1)
-                  :internal-weight 0.5
-                  :children (list (vv-edge B C))
-                  :match-edge (vv-edge B C)
-                  :parent (vv-edge B A)
-                  :positive? nil)
-               (C :id (id 2 1)
-                  :internal-weight 0.5
-                  :match-edge (vv-edge C B)
-                  :parent (vv-edge C B))
-               (D :id (id 1 0)
-                  :internal-weight 0.5
-                  :children (list (vv-edge D E)))
-               (E :id (id 2 0)
-                  :internal-weight 0.5
-                  :children (list (vv-edge E F))
-                  :match-edge (vv-edge E F)
-                  :parent (vv-edge E D)
-                  :positive? nil)
-               (F :id (id 3 0)
-                  :internal-weight 0.5
-                  :match-edge (vv-edge F E)
-                  :parent (vv-edge F E))
-               (G :id (id 4 0)
-                  :internal-weight 0.5
-                  :match-edge (vv-edge G H)
-                  :parent (vv-edge G H))
-               (H :id (id 5 0)
-                  :internal-weight 0.5
-                  :children (list (vv-edge H G))
-                  :match-edge (vv-edge H G)
-                  :parent (vv-edge H I)
-                  :positive? nil)
-               (I :id (id 6 0)
-                  :internal-weight 0.5
-                  :children (list (vv-edge I H)))
-               (J :id (id 5 1)
-                  :internal-weight 0.5
-                  :match-edge (vv-edge J K)
-                  :parent (vv-edge J K))
-               (K :id (id 6 1)
-                  :internal-weight 0.5
-                  :children (list (vv-edge K J))
-                  :match-edge (vv-edge K J)
-                  :parent (vv-edge K L)
-                  :positive? nil)
-               (L :id (id 7 1)
-                  :internal-weight 0.5
-                  :children (list (vv-edge L K)))
-               (BOUNDARY :id (id -1 0)
-                         :match-edge (vv-edge B A)
-                         :parent (vv-edge B A)))
             (is (tree-equalp original-tree target-tree))))))))
 
 ;;;

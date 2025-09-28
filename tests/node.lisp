@@ -39,9 +39,6 @@
   (let* ((augment-0 (anatevka::make-message-pong
                      :weight 0
                      :recommendation ':augment))
-         (augment-pos (anatevka::make-message-pong
-                       :weight 1
-                       :recommendation ':augment))
          (augment-neg (anatevka::make-message-pong
                        :weight -1
                        :recommendation ':augment))
@@ -51,20 +48,23 @@
          (hold-0 (anatevka::make-message-pong
                   :weight 0
                   :recommendation ':hold))
+         (hold-pos (anatevka::make-message-pong
+                    :weight 1
+                    :recommendation ':hold))
          (graft-0 (anatevka::make-message-pong
                    :weight 0
                    :recommendation ':graft))
          (zero-weighters (list augment-0 graft-0 contract-0)))
-    ;; non-zero AUGMENTs have higher precedence than equal-weight ops
+    ;; non-zero HOLDs have higher precedence than equal-weight ops
     (is (every #'identity
-               (loop :for rec :in (list ':graft ':expand ':contract)
+               (loop :for rec :in (list ':augment :graft ':expand ':contract)
                      :collect (let ((pong (anatevka::make-message-pong
                                            :weight (anatevka::message-pong-weight
-                                                    augment-pos)
+                                                    hold-pos)
                                            :recommendation rec)))
-                                (eql ':augment
+                                (eql ':hold
                                      (anatevka::message-pong-recommendation
-                                      (anatevka::unify-pongs augment-pos pong)))))))
+                                      (anatevka::unify-pongs hold-pos pong)))))))
     ;; HOLD 0 has lower precedence than other zero-weight ops
     (is (every #'identity
                (loop :for pong :in zero-weighters

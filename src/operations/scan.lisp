@@ -130,24 +130,24 @@ When INTERNAL-ROOT-SET is supplied, discard HOLD recommendations which emanate f
         ((and (eql ':hold y-rec)
               (member y-root internal-root-set :test #'address=))
          x)
-        ;; prefer non-zero `AUGMENT's (which become `REWEIGHT's) to other
-        ;; equal-weight recommendations to avoid rewinding livelock scenarios
-        ((and (eql ':augment x-rec)
-              (not (zerop x-weight))
-              (eql x-weight y-weight))
-         x)
-        ((and (eql ':augment y-rec)
-              (not (zerop y-weight))
-              (eql x-weight y-weight))
-         y)
-        ;; if we're both (`HOLD' 0)ing, aggregate the target root set
-        ((and (eql ':hold x-rec) (zerop x-weight)
-              (eql ':hold y-rec) (zerop y-weight))
+        ;; if we're both `HOLD'ing with the same weight, then aggregate
+        ;; the root-bucket of each pong
+        ((and (eql ':hold x-rec) (eql ':hold y-rec) (= x-weight y-weight))
          (initialize-and-return ((pong (copy-message-pong x)))
            (setf (message-pong-root-bucket pong)
                  (remove-duplicates (union (message-pong-root-bucket x)
                                            (message-pong-root-bucket y))
                                     :test #'address=))))
+        ;; prefer non-zero `HOLD's (which become `REWEIGHT's) to other
+        ;; equal-weight recommendations to avoid rewinding-related problems
+        ((and (eql ':hold x-rec)
+              (not (zerop x-weight))
+              (eql x-weight y-weight))
+         x)
+        ((and (eql ':hold y-rec)
+              (not (zerop y-weight))
+              (eql x-weight y-weight))
+         y)
         ;; (`HOLD' 0) is an expensive operation: either we idle or we have to
         ;; coordinate across multiple trees.  prefer easier actions.
         ((and (eql ':hold x-rec)
@@ -354,6 +354,9 @@ NOTE: this command is only installed when NODE is a vertex."
                    :weight weight
                    :id (blossom-node-id node)
                    :internal-roots internal-roots)))))
+        (log-entry :entry-type ':pinging-vertices
+                   :log-level 1
+                   :vertices vertices)
         (with-replies (replies
                        :returned? returned?
                        :message-type message-pong
@@ -366,7 +369,27 @@ NOTE: this command is only installed when NODE is a vertex."
                         (let ((edge (car (last (message-pong-edges reply)))))
                           (setf (blossom-edge-source-vertex edge) (process-public-address node)
                                 (blossom-edge-source-node edge) local-blossom)))
-                      (setf pong (unify-pongs reply pong :internal-root-set internal-roots))))))))
+                      (let ((reply-pong-rec (message-pong-recommendation reply))
+                            (reply-pong-weight (message-pong-weight reply))
+                            (reply-pong-edges (message-pong-edges reply))
+                            (reply-pong-target (message-pong-target-root reply)))
+                        (log-entry :entry-type ':processing-reply-pong
+                                   :log-level 1
+                                   :reply-pong-rec reply-pong-rec
+                                   :reply-pong-weight reply-pong-weight
+                                   :reply-pong-edges reply-pong-edges
+                                   :reply-pong-target reply-pong-target))
+                      (setf pong (unify-pongs reply pong :internal-root-set internal-roots)))
+          (let ((unified-pong-rec (message-pong-recommendation pong))
+                (unified-pong-weight (message-pong-weight pong))
+                (unified-pong-edges (message-pong-edges pong))
+                (unified-pong-target (message-pong-target-root pong)))
+            (log-entry :entry-type ':unified-reply-pong
+                       :log-level 1
+                       :unified-pong-rec unified-pong-rec
+                       :unified-pong-weight unified-pong-weight
+                       :unified-pong-edges unified-pong-edges
+                       :unified-pong-target unified-pong-target)))))))
 
 (define-process-upkeep ((node blossom-node)) (FINISH-SCAN reply-channel)
   "Finalize the SCAN procedure's stack frames. this includes forwarding the result to a parent if one instigated the SCAN procedure, or spawning a new SUPERVISOR process to handle the result if this SCAN was spontaneous."

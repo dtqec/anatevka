@@ -82,28 +82,33 @@
   "Before entering the critical section, we must determine which roots we should lock. If our target-root is not NIL, we need to lock it and the hold cluster it is contained within (if any). NB: This is only relevant to non-weightless operations (reweight and multireweight)."
   (unless (process-lockable-aborting? supervisor)
     (with-slots (pong targets) (peek (process-data-stack supervisor))
-      (with-slots (source-root target-root) pong
+      (with-slots (source-root target-root root-bucket) pong
         (push source-root targets)
         ;; the contents of `targets' depend on the recommendation. it always
         ;; includes the `source-root', and additionally
         ;;  - `AUGMENT': the `target-root' (and potentially its hold cluster)
         ;;  - `GRAFT': one end of the barbell
         ;;  - `EXPAND' or `CONTRACT': nothing
+        ;;  - `HOLD': same as `AUGMENT' + other unique roots in `root-bucket'
         (log-entry :entry-type ':gathering-targets
                    :pong (copy-message-pong pong)
                    :source-root source-root
                    :target-root target-root
+                   :root-bucket root-bucket
                    :targets targets)
         (unless (null target-root)
           (sync-rpc (make-message-convergecast-collect-roots)
               (target-cluster target-root :returned? returned?)
             (setf targets (remove-duplicates
-                           (append (list source-root target-root) target-cluster)
+                           (append (list source-root target-root)
+                                   target-cluster
+                                   root-bucket)
                            :test #'address=))
             (log-entry :entry-type ':collected-target-cluster
                        :source-root source-root
                        :target-root target-root
                        :target-cluster target-cluster
+                       :root-bucket root-bucket
                        :targets targets)))))))
 
 (define-process-upkeep ((supervisor supervisor)) (START-INNER-REWEIGHT)
@@ -138,26 +143,64 @@
 (define-process-upkeep ((supervisor supervisor)) (CHECK-REWEIGHT roots original-pong)
   "Because `CHECK-PONG' doesn't do a global check, we potentially can end up with a reweighting when we shouldn't. This fixes that by making sure that there are no lower-weight recommendations available before we begin reweighting."
   (unless (process-lockable-aborting? supervisor)
-    (let ((check-pong nil)
-          (original-weight (message-pong-weight original-pong)))
-      (flet ((payload-constructor ()
-               (make-message-soft-scan :weight 0
-                                       :internal-roots roots
-                                       :strategy ':STAY)))
-        (with-replies (replies
-                       :message-type message-pong
-                       :message-unpacker identity)
-                      (send-message-batch #'payload-constructor roots)
-          (loop :for reply :in replies :unless (null reply)
-                :do (setf check-pong (unify-pongs check-pong reply)))
-          (log-entry :entry-type ':check-reweight-details
-                     :original-pong original-pong
-                     :check-pong check-pong)
-          (when (< (message-pong-weight check-pong) original-weight)
-            (log-entry :entry-type ':check-reweight-aborting
-                       :original-pong original-pong
-                       :check-pong check-pong)
-            (setf (process-lockable-aborting? supervisor) t)))))))
+    (with-slots (targets) (peek (process-data-stack supervisor))
+      (let ((check-pong nil))
+        (with-slots ((original-rec recommendation) (original-weight weight)
+                     (original-target target-root))
+            original-pong
+          (flet ((payload-constructor ()
+                   (make-message-soft-scan :weight 0
+                                           :internal-roots roots
+                                           :strategy ':STAY)))
+            (log-entry :entry-type ':checking-reweight
+                       :log-level 1
+                       :roots roots
+                       :weight original-weight)
+            (with-replies (replies
+                           :message-type message-pong
+                           :message-unpacker identity)
+                          (send-message-batch #'payload-constructor roots)
+              (loop :for reply :in replies :unless (null reply)
+                    :do (setf check-pong (unify-pongs check-pong reply)))
+              (with-slots ((check-pong-rec recommendation) (check-pong-weight weight)
+                           (check-pong-edges edges) (check-pong-target target-root))
+                  check-pong
+                (log-entry :entry-type ':check-reweight-details
+                           :log-level 1
+                           :roots roots
+                           :weight original-weight
+                           :check-pong-rec check-pong-rec
+                           :check-pong-weight check-pong-weight
+                           :check-pong-edges check-pong-edges
+                           :check-pong-target check-pong-target)
+                ;; if the check-pong weight is lower, abort
+                (when (< check-pong-weight original-weight)
+                  (log-entry :entry-type ':check-reweight-aborting-lower-weight
+                             :log-level 1
+                             :original-weight original-weight
+                             :check-pong-weight check-pong-weight)
+                  (setf (process-lockable-aborting? supervisor) t))
+                ;; if the check-pong rec is HOLD now but it wasn't originally, abort
+                (when (and (eql ':hold check-pong-rec)
+                           (not (eql check-pong-rec original-rec))
+                           (not (address= original-target check-pong-target)))
+                  (log-entry :entry-type ':check-reweight-aborting-lower-precedence
+                             :log-level 1
+                             :original-rec original-rec
+                             :original-target original-target
+                             :check-pong-rec check-pong-rec
+                             :check-pong-target check-pong-target)
+                  (setf (process-lockable-aborting? supervisor) t))
+                ;; if the check-pong rec is HOLD from a root not in targets, abort
+                (when (and (eql ':hold check-pong-rec)
+                           (not (member check-pong-target targets :test #'address=)))
+                  (log-entry :entry-type ':check-reweight-aborting-new-root
+                             :log-level 1
+                             :original-rec original-rec
+                             :original-target original-target
+                             :check-pong-rec check-pong-rec
+                             :check-pong-target check-pong-target
+                             :targets targets))))))))))
 
 (define-process-upkeep ((supervisor supervisor))
     (BROADCAST-REWEIGHT roots weight)
@@ -170,7 +213,10 @@
     (flet ((payload-constructor ()
              (make-message-broadcast-reweight :weight weight)))
       (with-replies (replies) (send-message-batch #'payload-constructor roots)
-        nil))))
+        (log-entry :entry-type ':reweighting-finished
+                   :log-level 1
+                   :weight weight
+                   :roots roots)))))
 
 (define-process-upkeep ((supervisor supervisor))
     (CHECK-REWINDING roots original-pong carry)
@@ -182,6 +228,10 @@
           (original-amount (message-pong-weight original-pong)))
       (flet ((payload-constructor ()
                (make-message-soft-scan :weight 0 :strategy ':STAY)))
+        (log-entry :entry-type ':checking-rewinding
+                   :log-level 1
+                   :roots roots
+                   :weight original-amount)
         (with-replies (replies
                        :returned? returned?
                        :message-type message-pong
@@ -191,58 +241,61 @@
                 :do (setf rewinding-pong (unify-pongs rewinding-pong reply)))
           ;; The `maximum-rewinding' variable tracks how much is left to
           ;; potentially rewind from the initial recommendation reweighting.
-          (let ((maximum-rewinding (- original-amount carry))
-                (minimum-weight-edge (message-pong-weight rewinding-pong)))
-            (log-entry :entry-type ':check-rewinding-details
-                       :original-amount original-amount
-                       :carry carry
-                       :minimum-weight-edge minimum-weight-edge
-                       :rewinding-pong rewinding-pong)
-            (when (minusp minimum-weight-edge)
-              ;; When we encounter a negative-weight edge, this means that
-              ;; our reweighting operation happened at the same time as another
-              ;; nearby reweighting operation. We could fully backtrack and
-              ;; deweight by the original recommendation, but this can result
-              ;; in livelock scenarios when the state of the problem graph is
-              ;; sufficiently symmetric. Fortunately, the `minimum-weight-edge'
-              ;; value that we get back from our soft-scan check gives us some
-              ;; useful information -- it is bounded above by the value of the
-              ;; smallest simultaneous reweight in the local area. If we instead
-              ;; backtrack by half that amount, we allow nearby alternating trees
-              ;; to grow heavier (and thus closer to one another), while still
-              ;; maintaining the validity of nearby modified edge weights,
-              ;; thus breaking the symmetries of the problem graph and avoiding
-              ;; livelock induced by repeated reweighting and rewinding.
-              ;; However, we don't want to halve indefinitely, so we only do
-              ;; that for the first round of rewinding.
-              (let ((rewinding-amount minimum-weight-edge))
-                ;; If it is our first try, attempt to compromise with a nearby
-                ;; simultaneous reweighter by using half the overlap weight.
-                (when (zerop carry)
-                  (setf rewinding-amount (/ rewinding-amount 2)))
-                (let ((new-carry (- carry rewinding-amount)))
-                  (log-entry :entry-type ':rewinding
-                             :log-level 2
-                             :roots roots
-                             :amount rewinding-amount
-                             :overall new-carry
-                             :recommendation original-amount)
-                  ;; If the rewinding amount is such that we are not fully
-                  ;; backtracking, check ourselves again and respond accordingly.
-                  (when (< (- rewinding-amount) maximum-rewinding)
+          (let ((maximum-rewinding (- original-amount carry)))
+            (with-slots ((rewinding-pong-rec recommendation) (minimum-weight-edge weight) 
+                         (rewinding-pong-edges edges) (rewinding-pong-target target-root))
+                rewinding-pong
+              (log-entry :entry-type ':check-rewinding-details
+                         :log-level 1
+                         :roots roots
+                         :minimum-weight-edge minimum-weight-edge
+                         :rewinding-pong-rec rewinding-pong-rec
+                         :rewinding-pong-edges rewinding-pong-edges
+                         :rewinding-pong-target rewinding-pong-target)
+              (when (minusp minimum-weight-edge)
+                ;; When we encounter a negative-weight edge, this means that
+                ;; our reweighting operation happened at the same time as another
+                ;; nearby reweighting operation. We could fully backtrack and
+                ;; deweight by the original recommendation, but this can result
+                ;; in livelock scenarios when the state of the problem graph is
+                ;; sufficiently symmetric. Fortunately, the `minimum-weight-edge'
+                ;; value that we get back from our soft-scan check gives us some
+                ;; useful information -- it is bounded above by the value of the
+                ;; smallest simultaneous reweight in the local area. If we instead
+                ;; backtrack by half that amount, we allow nearby alternating trees
+                ;; to grow heavier (and thus closer to one another), while still
+                ;; maintaining the validity of nearby modified edge weights,
+                ;; thus breaking the symmetries of the problem graph and avoiding
+                ;; livelock induced by repeated reweighting and rewinding.
+                ;; However, we don't want to halve indefinitely, so we only do
+                ;; that for the first round of rewinding.
+                (let ((rewinding-amount minimum-weight-edge))
+                  ;; If it is our first try, attempt to compromise with a nearby
+                  ;; simultaneous reweighter by using half the overlap weight.
+                  (when (zerop carry)
+                    (setf rewinding-amount (/ rewinding-amount 2)))
+                  (let ((new-carry (- carry rewinding-amount)))
+                    (log-entry :entry-type ':rewinding
+                               :log-level 2
+                               :roots roots
+                               :amount (- rewinding-amount)
+                               :overall new-carry)
+                    ;; If the rewinding amount is such that we are not fully
+                    ;; backtracking, check ourselves again and respond accordingly.
+                    (when (< (- rewinding-amount) maximum-rewinding)
+                      (process-continuation supervisor
+                                            `(BROADCAST-PINGABILITY ,roots :SOFT)
+                                            `(CHECK-REWINDING ,roots ,original-pong ,new-carry)))
+                    ;; If we get a rewinding of larger magnitude than the initial
+                    ;; recommendation, then we should not do that. In fact, the
+                    ;; cumulative rewinding should be carried from rewinding to
+                    ;; rewinding so that it doesn't cause problems.
+                    (when (> (- rewinding-amount) maximum-rewinding)
+                      (setf rewinding-amount (- maximum-rewinding)))
+                    ;; Finally, add the commands for actually doing the rewind.
                     (process-continuation supervisor
-                                          `(BROADCAST-PINGABILITY ,roots :SOFT)
-                                          `(CHECK-REWINDING ,roots ,original-pong ,new-carry)))
-                  ;; If we get a rewinding of larger magnitude than the initial
-                  ;; recommendation, then we should not do that. In fact, the
-                  ;; cumulative rewinding should be carried from rewinding to
-                  ;; rewinding so that it doesn't cause problems.
-                  (when (> (- rewinding-amount) maximum-rewinding)
-                    (setf rewinding-amount (- maximum-rewinding)))
-                  ;; Finally, add the commands for actually doing the rewind.
-                  (process-continuation supervisor
-                                        `(BROADCAST-PINGABILITY ,roots :NONE)
-                                        `(BROADCAST-REWEIGHT ,roots ,rewinding-amount)))))))))))
+                                          `(BROADCAST-PINGABILITY ,roots :NONE)
+                                          `(BROADCAST-REWEIGHT ,roots ,rewinding-amount))))))))))))
 
 (define-process-upkeep ((supervisor supervisor)) (FINISH-REWEIGHT)
   "Clean up after the local state of the reweight operation."

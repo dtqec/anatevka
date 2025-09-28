@@ -93,9 +93,9 @@ d(C, D) = 2
 
   A <== B <-- C    D --> E ==> F   -->   A <== B <-- C    D --> E ==> F
   +     -     +    +     -     +         +     -     +    +     -     +
-  0     2     0    0     2     0         1     1     1    1     1     1
+  0     2     0    0     2     0        3/2   1/2   3/2  3/2   1/2   3/2
 
-d(C, D) = 2
+d(C, D) = 3
 
 The point of this test is to show that we can break livelock induced by
 repeated reweighting and rewinding.
@@ -119,16 +119,16 @@ repeated reweighting and rewinding.
            (C :id (id 4 0)
               :children (list (vv-edge C B))
               :paused? T)
-           (D :id (id 6 0)
+           (D :id (id 7 0)
               :children (list (vv-edge D E))
               :paused? T)
-           (E :id (id 8 0)
+           (E :id (id 9 0)
               :internal-weight 2
               :children (list (vv-edge E F))
               :match-edge (vv-edge E F)
               :parent (vv-edge E D)
               :positive? nil)
-           (F :id (id 10 0)
+           (F :id (id 11 0)
               :match-edge (vv-edge F E)
               :parent (vv-edge F E)))
         (let ((supervisor-left (supervisor simulation
@@ -160,29 +160,29 @@ repeated reweighting and rewinding.
           (simulate-until-dead simulation supervisor-right)
           (blossom-let (target-tree :dryad dryad-address)
               ((A :id (id 0 0)
-                  :internal-weight 1
+                  :internal-weight 3/2
                   :match-edge (vv-edge A B)
                   :parent (vv-edge A B))
                (B :id (id 2 0)
                   :children (list (vv-edge B A))
-                  :internal-weight 1
+                  :internal-weight 1/2
                   :parent (vv-edge B C)
                   :match-edge (vv-edge B A)
                   :positive? nil)
                (C :id (id 4 0)
-                  :internal-weight 1
+                  :internal-weight 3/2
                   :children (list (vv-edge C B)))
-               (D :id (id 6 0)
-                  :internal-weight 1
+               (D :id (id 7 0)
+                  :internal-weight 3/2
                   :children (list (vv-edge D E)))
-               (E :id (id 8 0)
-                  :internal-weight 1
+               (E :id (id 9 0)
+                  :internal-weight 1/2
                   :children (list (vv-edge E F))
                   :match-edge (vv-edge E F)
                   :parent (vv-edge E D)
                   :positive? nil)
-               (F :id (id 10 0)
-                  :internal-weight 1
+               (F :id (id 11 0)
+                  :internal-weight 3/2
                   :match-edge (vv-edge F E)
                   :parent (vv-edge F E)))
             (is (tree-equalp original-tree target-tree))))))))

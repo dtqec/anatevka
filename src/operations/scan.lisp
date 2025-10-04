@@ -138,16 +138,6 @@ When INTERNAL-ROOT-SET is supplied, discard HOLD recommendations which emanate f
                  (remove-duplicates (union (message-pong-root-bucket x)
                                            (message-pong-root-bucket y))
                                     :test #'address=))))
-        ;; prefer non-zero `HOLD's (which become `REWEIGHT's) to other
-        ;; equal-weight recommendations to avoid rewinding-related problems
-        ((and (eql ':hold x-rec)
-              (not (zerop x-weight))
-              (eql x-weight y-weight))
-         x)
-        ((and (eql ':hold y-rec)
-              (not (zerop y-weight))
-              (eql x-weight y-weight))
-         y)
         ;; (`HOLD' 0) is an expensive operation: either we idle or we have to
         ;; coordinate across multiple trees.  prefer easier actions.
         ((and (eql ':hold x-rec)

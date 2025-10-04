@@ -130,6 +130,12 @@ When INTERNAL-ROOT-SET is supplied, discard HOLD recommendations which emanate f
         ((and (eql ':hold y-rec)
               (member y-root internal-root-set :test #'address=))
          x)
+        ;; prefer non-zero `AUGMENT's (which become `REWEIGHT's) to other
+        ;; equal-weight recommendations to avoid rewinding livelock scenarios
+        ((and (eql ':augment x-rec)
+              (not (zerop x-weight))
+              (eql x-weight y-weight))
+         x)
         ;; if we're both (`HOLD' 0)ing, aggregate the root-bucket of each pong
         ((and (eql ':hold x-rec) (eql ':hold y-rec)
               (zerop x-weight) (zerop y-weight))

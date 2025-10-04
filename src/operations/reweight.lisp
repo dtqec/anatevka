@@ -177,28 +177,7 @@
                              :log-level 1
                              :original-weight original-weight
                              :check-pong-weight check-pong-weight)
-                  (setf (process-lockable-aborting? supervisor) t))
-                ;; if the check-pong rec is HOLD now but it wasn't originally, abort
-                (when (and (eql ':hold check-pong-rec)
-                           (not (eql check-pong-rec original-rec))
-                           (not (address= original-target check-pong-target)))
-                  (log-entry :entry-type ':check-reweight-aborting-lower-precedence
-                             :log-level 1
-                             :original-rec original-rec
-                             :original-target original-target
-                             :check-pong-rec check-pong-rec
-                             :check-pong-target check-pong-target)
-                  (setf (process-lockable-aborting? supervisor) t))
-                ;; if the check-pong rec is HOLD from a root not in targets, abort
-                (when (and (eql ':hold check-pong-rec)
-                           (not (member check-pong-target targets :test #'address=)))
-                  (log-entry :entry-type ':check-reweight-aborting-new-root
-                             :log-level 1
-                             :original-rec original-rec
-                             :original-target original-target
-                             :check-pong-rec check-pong-rec
-                             :check-pong-target check-pong-target
-                             :targets targets))))))))))
+                  (setf (process-lockable-aborting? supervisor) t))))))))))
 
 (define-process-upkeep ((supervisor supervisor))
     (BROADCAST-REWEIGHT roots weight)

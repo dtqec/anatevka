@@ -89,7 +89,6 @@
         ;;  - `AUGMENT': the `target-root' (and potentially its hold cluster)
         ;;  - `GRAFT': one end of the barbell
         ;;  - `EXPAND' or `CONTRACT': nothing
-        ;;  - `HOLD': same as `AUGMENT' + other unique roots in `root-bucket'
         (log-entry :entry-type ':gathering-targets
                    :pong (copy-message-pong pong)
                    :source-root source-root
@@ -101,8 +100,7 @@
               (target-cluster target-root :returned? returned?)
             (setf targets (remove-duplicates
                            (append (list source-root target-root)
-                                   target-cluster
-                                   root-bucket)
+                                   target-cluster)
                            :test #'address=))
             (log-entry :entry-type ':collected-target-cluster
                        :source-root source-root

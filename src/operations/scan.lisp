@@ -130,9 +130,9 @@ When INTERNAL-ROOT-SET is supplied, discard HOLD recommendations which emanate f
         ((and (eql ':hold y-rec)
               (member y-root internal-root-set :test #'address=))
          x)
-        ;; if we're both `HOLD'ing with the same weight, then aggregate
-        ;; the root-bucket of each pong
-        ((and (eql ':hold x-rec) (eql ':hold y-rec) (= x-weight y-weight))
+        ;; if we're both (`HOLD' 0)ing, aggregate the root-bucket of each pong
+        ((and (eql ':hold x-rec) (eql ':hold y-rec)
+              (zerop x-weight) (zerop y-weight))
          (initialize-and-return ((pong (copy-message-pong x)))
            (setf (message-pong-root-bucket pong)
                  (remove-duplicates (union (message-pong-root-bucket x)

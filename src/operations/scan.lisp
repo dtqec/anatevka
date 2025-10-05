@@ -495,12 +495,19 @@ This handler is responsible for actually assigning a recommended-next-move for t
          (last-edge (first (message-pong-edges pong))))
     ;; if we haven't yet started crawling up parent instead of pistil...
     (unless (blossom-edge-target-node last-edge)
-      ;; ... include these internal weights
-      (log-entry :entry-type ':decf-weight
-                 :old-value (message-pong-weight pong)
-                 :delta (blossom-node-internal-weight node))
-      (decf (message-pong-weight pong)
-            (blossom-node-internal-weight node)))
+      (with-slots (internal-weight stashed-weight) node
+        ;; if we have a stashed-weight, use that, otherwise use internal-weight
+        ;;
+        ;; NB: stashed-weight is only set if we're a negative node in the process
+        ;;     of being reweighted
+        (let ((delta (if (null stashed-weight) internal-weight stashed-weight)))
+          ;; ... include these internal weights
+          (log-entry :entry-type ':decf-weight
+                     :old-value (message-pong-weight pong)
+                     :delta delta
+                     :internal-weight internal-weight
+                     :stashed-weight stashed-weight)
+          (decf (message-pong-weight pong) delta))))
     ;; if we haven't yet made it to toplevel...
     (when (blossom-node-pistil node)
       ;; ... keep throwing up pistil.

@@ -187,10 +187,11 @@ PONG: The PONG that this process received at its START."
 (define-process-upkeep ((supervisor supervisor))
     (EVALUATE-CHECK-PONG stale-pong local-pong replica-pong)
   "CHECK-PONG results in a refreshed REPLICA-PONG, which we're to compare against STALE-PONG and LOCAL-PONG, aborting if they differ in a way that indicates stale information."
+  (declare (ignore local-pong))
   (let ((pongs-materially-differ? (not (pong= stale-pong replica-pong))))
-    (if pongs-materially-differ?
-        (log-entry :entry-type ':check-pong-aborting
-                   :log-level 1))
+    (when pongs-materially-differ?
+      (log-entry :entry-type ':check-pong-aborting
+                 :log-level 1))
     (setf (process-lockable-aborting? supervisor) pongs-materially-differ?)))
 
 (define-process-upkeep ((supervisor supervisor)) (ENSURE-ABORTING pong)

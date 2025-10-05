@@ -108,16 +108,6 @@
 
 (defmethod print-log-entry (entry
                             (source supervisor)
-                            (entry-type (eql ':check-reweight-aborting-lower-precedence))
-                            &optional (stream *standard-output*))
-  (format stream "~5f: [~a] aborting reweight because we got a lower-precedence rec (~a < ~a)~%"
-          (getf entry ':time)
-          (getf entry ':source)
-          (getf entry ':check-pong-rec)
-          (getf entry ':original-rec)))
-
-(defmethod print-log-entry (entry
-                            (source supervisor)
                             (entry-type (eql ':reweighting))
                             &optional (stream *standard-output*))
   (format stream "~5f: [~a] reweighting roots (~{~a~^ ~}) by ~a~%"

@@ -132,6 +132,7 @@ PONG: The PONG that this process received at its START."
         (loop :for (parent pistil match-edge) :in values-lists
               :do (when (or parent pistil match-edge)
                     (log-entry :entry-type ':check-roots-aborting
+                               :log-level 1
                                :roots roots
                                :values-lists values-lists
                                :parent parent
@@ -186,8 +187,12 @@ PONG: The PONG that this process received at its START."
 (define-process-upkeep ((supervisor supervisor))
     (EVALUATE-CHECK-PONG stale-pong local-pong replica-pong)
   "CHECK-PONG results in a refreshed REPLICA-PONG, which we're to compare against STALE-PONG and LOCAL-PONG, aborting if they differ in a way that indicates stale information."
-  (setf (process-lockable-aborting? supervisor)
-        (not (pong= stale-pong replica-pong))))
+  (declare (ignore local-pong))
+  (let ((pongs-materially-differ? (not (pong= stale-pong replica-pong))))
+    (when pongs-materially-differ?
+      (log-entry :entry-type ':check-pong-aborting
+                 :log-level 1))
+    (setf (process-lockable-aborting? supervisor) pongs-materially-differ?)))
 
 (define-process-upkeep ((supervisor supervisor)) (ENSURE-ABORTING pong)
   "This command is used upon encountering a negatively-weighted edge rec, to cause the algorithm to crash if the recommendation doesn't resolve itself."

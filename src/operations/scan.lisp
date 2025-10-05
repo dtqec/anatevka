@@ -130,24 +130,20 @@ When INTERNAL-ROOT-SET is supplied, discard HOLD recommendations which emanate f
         ((and (eql ':hold y-rec)
               (member y-root internal-root-set :test #'address=))
          x)
-        ;; if we're both `HOLD'ing with the same weight, then aggregate
-        ;; the root-bucket of each pong
-        ((and (eql ':hold x-rec) (eql ':hold y-rec) (= x-weight y-weight))
+        ;; prefer non-zero `AUGMENT's (which become `REWEIGHT's) to other
+        ;; equal-weight recommendations to avoid rewinding livelock scenarios
+        ((and (eql ':augment x-rec)
+              (not (zerop x-weight))
+              (eql x-weight y-weight))
+         x)
+        ;; if we're both (`HOLD' 0)ing, aggregate the root-bucket of each pong
+        ((and (eql ':hold x-rec) (eql ':hold y-rec)
+              (zerop x-weight) (zerop y-weight))
          (initialize-and-return ((pong (copy-message-pong x)))
            (setf (message-pong-root-bucket pong)
                  (remove-duplicates (union (message-pong-root-bucket x)
                                            (message-pong-root-bucket y))
                                     :test #'address=))))
-        ;; prefer non-zero `HOLD's (which become `REWEIGHT's) to other
-        ;; equal-weight recommendations to avoid rewinding-related problems
-        ((and (eql ':hold x-rec)
-              (not (zerop x-weight))
-              (eql x-weight y-weight))
-         x)
-        ((and (eql ':hold y-rec)
-              (not (zerop y-weight))
-              (eql x-weight y-weight))
-         y)
         ;; (`HOLD' 0) is an expensive operation: either we idle or we have to
         ;; coordinate across multiple trees.  prefer easier actions.
         ((and (eql ':hold x-rec)
@@ -499,12 +495,19 @@ This handler is responsible for actually assigning a recommended-next-move for t
          (last-edge (first (message-pong-edges pong))))
     ;; if we haven't yet started crawling up parent instead of pistil...
     (unless (blossom-edge-target-node last-edge)
-      ;; ... include these internal weights
-      (log-entry :entry-type ':decf-weight
-                 :old-value (message-pong-weight pong)
-                 :delta (blossom-node-internal-weight node))
-      (decf (message-pong-weight pong)
-            (blossom-node-internal-weight node)))
+      (with-slots (internal-weight stashed-weight) node
+        ;; if we have a stashed-weight, use that, otherwise use internal-weight
+        ;;
+        ;; NB: stashed-weight is only set if we're a negative node in the process
+        ;;     of being reweighted
+        (let ((delta (if (null stashed-weight) internal-weight stashed-weight)))
+          ;; ... include these internal weights
+          (log-entry :entry-type ':decf-weight
+                     :old-value (message-pong-weight pong)
+                     :delta delta
+                     :internal-weight internal-weight
+                     :stashed-weight stashed-weight)
+          (decf (message-pong-weight pong) delta))))
     ;; if we haven't yet made it to toplevel...
     (when (blossom-node-pistil node)
       ;; ... keep throwing up pistil.

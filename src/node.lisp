@@ -128,7 +128,13 @@
     :initform nil
     :initarg :claimed?
     :type boolean
-    :documentation "If T, this blossom is claimed as part of a hold-cluster."))
+    :documentation "If T, this blossom is claimed as part of a hold-cluster.")
+   (stashed-weight
+    :accessor blossom-node-stashed-weight
+    :initarg :stashed-weight
+    :initform nil
+    :type (or null real)
+    :documentation "Used to stash the internal weights of negative nodes during reweights."))
   (:documentation "Embodies a blossom in the blossom algorithm."))
 
 ;;;
@@ -476,7 +482,9 @@ evalutes to
   
   (message-id-query                   'handle-message-id-query)
   (message-claim-root                 'handle-message-claim-root)
-  (message-release-root               'handle-message-release-root))
+  (message-release-root               'handle-message-release-root)
+  (message-broadcast-stash-weight     'handle-message-broadcast-stash-weight)
+  (message-broadcast-unstash-weight   'handle-message-broadcast-unstash-weight))
 
 ;;;
 ;;; basic command definitions for BLOSSOM-NODE

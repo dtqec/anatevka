@@ -132,9 +132,11 @@
                             `(BROADCAST-PINGABILITY ,targets :SOFT)
                             `(CHECK-REWEIGHT (,source-root) ,pong)
                             `(BROADCAST-PINGABILITY ,targets :NONE)
+                            `(BROADCAST-STASH-WEIGHT ,targets)
                             `(BROADCAST-REWEIGHT (,source-root) ,weight)
                             `(BROADCAST-PINGABILITY ,targets :SOFT)
                             `(CHECK-REWINDING (,source-root) ,pong 0)
+                            `(BROADCAST-UNSTASH-WEIGHT ,targets)
                             `(BROADCAST-UNLOCK)
                             `(HALT)))))
 
@@ -178,6 +180,17 @@
                              :original-weight original-weight
                              :check-pong-weight check-pong-weight)
                   (setf (process-lockable-aborting? supervisor) t))))))))))
+
+(define-process-upkeep ((supervisor supervisor))
+    (BROADCAST-STASH-WEIGHT roots)
+  "Instruct some `ROOTS' to have their negative nodes stash their internal weights."
+  (unless (process-lockable-aborting? supervisor)
+    (log-entry :entry-type ':stashing-weights
+               :log-level 1
+               :roots roots)
+    (flet ((payload-constructor ()
+             (make-message-broadcast-stash-weight)))
+      (with-replies (replies) (send-message-batch #'payload-constructor roots)))))
 
 (define-process-upkeep ((supervisor supervisor))
     (BROADCAST-REWEIGHT roots weight)
@@ -274,6 +287,17 @@
                                           `(BROADCAST-PINGABILITY ,roots :NONE)
                                           `(BROADCAST-REWEIGHT ,roots ,rewinding-amount))))))))))))
 
+(define-process-upkeep ((supervisor supervisor))
+    (BROADCAST-UNSTASH-WEIGHT roots)
+  "Instruct some `ROOTS' to have their negative nodes unstash their internal weights."
+  (unless (process-lockable-aborting? supervisor)
+    (log-entry :entry-type ':unstashing-weights
+               :log-level 1
+               :roots roots)
+    (flet ((payload-constructor ()
+             (make-message-broadcast-unstash-weight)))
+      (with-replies (replies) (send-message-batch #'payload-constructor roots)))))
+
 (define-process-upkeep ((supervisor supervisor)) (FINISH-REWEIGHT)
   "Clean up after the local state of the reweight operation."
   (pop (process-data-stack supervisor)))
@@ -282,13 +306,30 @@
 ;;; message definitions
 ;;;
 
+(defstruct (message-broadcast-stash-weight (:include message))
+  "Sent from a `SUPERVISOR' to a tree to have its negative nodes stash their internal weights.")
+
 (defstruct (message-broadcast-reweight (:include message))
   "Sent from a `SUPERVISOR' to a tree to reweight its top-level nodes by `WEIGHT'."
   (weight nil :type real))
 
+(defstruct (message-broadcast-unstash-weight (:include message))
+  "Sent from a `SUPERVISOR' to a tree to have its negative nodes unstash their internal weights.")
+
 ;;;
 ;;; message handlers
 ;;;
+
+(define-broadcast-handler handle-message-broadcast-stash-weight
+    ((node blossom-node) (message message-broadcast-stash-weight))
+  "If the node is negative, sets the `STASHED-WEIGHT' of `NODE' to equal its `INTERNAL-WEIGHT', and regardless instructs `NODE's children to do the same."
+  (with-slots (internal-weight positive? stashed-weight) node
+    (unless positive?
+      (setf stashed-weight internal-weight))
+    (log-entry :entry-type ':stashed-weight
+               :stashed-weight stashed-weight)
+    (push-broadcast-frame :targets (mapcar #'blossom-edge-target-node
+                                           (blossom-node-children node)))))
 
 (define-broadcast-handler handle-message-broadcast-reweight
     ((node blossom-node) (message message-broadcast-reweight))
@@ -305,3 +346,14 @@
       (setf weight (- weight))
       (push-broadcast-frame :targets (mapcar #'blossom-edge-target-node
                                              (blossom-node-children node))))))
+
+(define-broadcast-handler handle-message-broadcast-unstash-weight
+    ((node blossom-node) (message message-broadcast-unstash-weight))
+  "If the node is negative, sets the `STASHED-WEIGHT' of `NODE' to NIL, and regardless instructs `NODE's children to do the same."
+  (with-slots (internal-weight positive? stashed-weight) node
+    (unless positive?
+      (setf stashed-weight nil))
+    (log-entry :entry-type ':unstashed-weight
+               :stashed-weight stashed-weight)
+    (push-broadcast-frame :targets (mapcar #'blossom-edge-target-node
+                                           (blossom-node-children node)))))

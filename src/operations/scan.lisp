@@ -274,23 +274,34 @@ When INTERNAL-ROOT-SET is supplied, discard HOLD recommendations which emanate f
   "Request from the dryad responsible for this node a list of candidate node neighbors with which to coordinate for this node's next operation.  Defers the actual processing of that list to PROCESS-ADDRESSES."
   (unless (or (blossom-node-petals node)
               (not (blossom-node-positive? node)))
-    (with-slots (weight strategy) (peek (process-data-stack node))
-      (sync-rpc (make-message-discover
-                 :id (blossom-node-id node)
-                 :address (process-public-address node)
-                 ;; negated bc `weight' is negated above in `START-SCAN' let block
-                 :internal-weight (- weight)
-                 :strategy strategy)
-          (discovery-message (blossom-node-dryad node)
-           :message-type message-discovery :message-unpacker identity
-           :returned? returned?)
-        (cond
-          ((and returned? (blossom-node-wilting node))
-           nil)
-          (returned?
-           (error "Live node got an RTS during dryad communication."))
-          (t
-           (process-continuation node `(PROCESS-ADDRESSES ,discovery-message))))))))
+    (with-slots (weight strategy local-blossom local-root)
+        (peek (process-data-stack node))
+      (with-slots (id internal-weight) node
+        (log-entry :entry-type ':contacting-dryad
+                   :log-level 1
+                   :id id
+                   :address (process-public-address node)
+                   :internal-weight internal-weight
+                   :local-blossom local-blossom
+                   :local-root local-root
+                   :discover-weight (- weight)
+                   :discover-strategy strategy)
+        (sync-rpc (make-message-discover
+                   :id id
+                   :address (process-public-address node)
+                   ;; negated bc `weight' is negated above in `START-SCAN' let block
+                   :internal-weight (- weight)
+                   :strategy strategy)
+            (discovery-message (blossom-node-dryad node)
+             :message-type message-discovery :message-unpacker identity
+             :returned? returned?)
+          (cond
+            ((and returned? (blossom-node-wilting node))
+             nil)
+            (returned?
+             (error "Live node got an RTS during dryad communication."))
+            (t
+             (process-continuation node `(PROCESS-ADDRESSES ,discovery-message)))))))))
 
 (define-process-upkeep ((node blossom-node)) (PROCESS-ADDRESSES discovery-message)
   "Performs postprocessing, if any, on the list of candidate neighbor nodes received from the dryad, then sets up the PING command to start communicating with them."

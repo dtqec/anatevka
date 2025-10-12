@@ -137,6 +137,7 @@
                             `(BROADCAST-PINGABILITY ,targets :SOFT)
                             `(CHECK-REWINDING (,source-root) ,pong 0)
                             `(BROADCAST-UNSTASH-WEIGHT ,targets)
+                            `(CLEAR-HELD-BY-ROOTS ,targets)
                             `(BROADCAST-UNLOCK)
                             `(HALT)))))
 

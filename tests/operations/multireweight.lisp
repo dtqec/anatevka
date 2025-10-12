@@ -1394,8 +1394,7 @@ d(B, D), d(J, L) = 2 and d(F, G) = 1
           (simulate-until-dead simulation supervisor-right)
           (blossom-let (target-tree :dryad dryad-address)
               ((A :id (id 0 2)
-                  :children (list (vv-edge A B))
-                  :held-by-roots (list D))
+                  :children (list (vv-edge A B)))
                (B :id (id 2 2)
                   :children (list (vv-edge B C))
                   :internal-weight 2
@@ -1406,8 +1405,7 @@ d(B, D), d(J, L) = 2 and d(F, G) = 1
                   :match-edge (vv-edge C B)
                   :parent (vv-edge C B))
                (D :id (id 2 0)
-                  :children (list (vv-edge D E))
-                  :held-by-roots (list A))
+                  :children (list (vv-edge D E)))
                (E :id (id 4 0)
                   :children (list (vv-edge E F))
                   :internal-weight 2
@@ -1632,8 +1630,7 @@ d(B, D), d(H, J), d(N, P) = 2 and d(F, G), d(L, M) = 1
                   :positive? nil)
                (I :id (id 11 0)
                   :internal-weight 0
-                  :children (list (vv-edge I H))
-                  :held-by-roots (list L))
+                  :children (list (vv-edge I H)))
                (J :id (id 9 2)
                   :internal-weight 0
                   :match-edge (vv-edge J K)
@@ -1646,8 +1643,7 @@ d(B, D), d(H, J), d(N, P) = 2 and d(F, G), d(L, M) = 1
                   :positive? nil)
                (L :id (id 13 2)
                   :internal-weight 0
-                  :children (list (vv-edge L K))
-                  :held-by-roots (list I))
+                  :children (list (vv-edge L K)))
                (M :id (id 14 2)
                   :internal-weight 1
                   :children (list (vv-edge M N)))
@@ -1886,8 +1882,7 @@ d(B, D), d(H, J), d(N, P), d(U, W) = 2 and d(F, G), d(R, S) = 1 and d(L, M) = 2
                   :positive? nil)
                (I :id (id 11 0)
                   :internal-weight 0
-                  :children (list (vv-edge I H))
-                  :held-by-roots (list L))
+                  :children (list (vv-edge I H)))
                (J :id (id 9 2)
                   :internal-weight 0
                   :match-edge (vv-edge J K)
@@ -1900,8 +1895,7 @@ d(B, D), d(H, J), d(N, P), d(U, W) = 2 and d(F, G), d(R, S) = 1 and d(L, M) = 2
                   :positive? nil)
                (L :id (id 13 2)
                   :internal-weight 0
-                  :children (list (vv-edge L K))
-                  :held-by-roots (list I))
+                  :children (list (vv-edge L K)))
                (M :id (id 15 2)
                   :internal-weight 1
                   :children (list (vv-edge M N)))
@@ -1940,8 +1934,7 @@ d(B, D), d(H, J), d(N, P), d(U, W) = 2 and d(F, G), d(R, S) = 1 and d(L, M) = 2
                   :positive? nil)
                (V :id (id 26 0)
                   :internal-weight 0
-                  :children (list (vv-edge V U))
-                  :held-by-roots (list Y))
+                  :children (list (vv-edge V U)))
                (W :id (id 24 2)
                   :internal-weight 0
                   :match-edge (vv-edge W X)
@@ -1954,6 +1947,5 @@ d(B, D), d(H, J), d(N, P), d(U, W) = 2 and d(F, G), d(R, S) = 1 and d(L, M) = 2
                   :positive? nil)
                (Y :id (id 28 2)
                   :internal-weight 0
-                  :children (list (vv-edge Y X))
-                  :held-by-roots (list V)))
+                  :children (list (vv-edge Y X))))
             (is (tree-equalp original-tree target-tree))))))))

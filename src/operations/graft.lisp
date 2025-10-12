@@ -54,6 +54,7 @@
                             `(BROADCAST-PINGABILITY ,targets :SOFT)
                             `(CHECK-PONG ,pong)
                             `(INNER-GRAFT ,pong)
+                            `(CLEAR-HELD-BY-ROOTS ,targets)
                             `(BROADCAST-UNLOCK)))))
 
 (define-process-upkeep ((supervisor supervisor)) (INNER-GRAFT pong)

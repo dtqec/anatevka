@@ -208,3 +208,11 @@ PONG: The PONG that this process received at its START."
              (make-message-broadcast-pingability :ping-type new-type)))
       (with-replies (replies) (send-message-batch #'payload-constructor targets)
         nil))))
+
+(define-process-upkeep ((supervisor supervisor)) (CLEAR-HELD-BY-ROOTS roots)
+  "If the operation was successful (essentially, if the supervisor is not ABORTING?), unset `HELD-BY-ROOTS' for everyone in `ROOTS' (equal to the lock targets)."
+  (unless (process-lockable-aborting? supervisor)
+    (flet ((payload-constructor ()
+             (make-message-set :slots '(held-by-roots) :values `(,nil))))
+      (with-replies (replies :returned? returned?)
+                    (send-message-batch #'payload-constructor roots)))))

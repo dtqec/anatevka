@@ -57,6 +57,7 @@
                             `(CHECK-ROOTS ,targets)
                             `(CHECK-INNER-BLOSSOM ,blossom ,source-root)
                             `(EXPAND-INNER-BLOSSOM ,blossom)
+                            `(CLEAR-HELD-BY-ROOTS ,targets)
                             `(BROADCAST-UNLOCK)
                             `(HALT)))))
 

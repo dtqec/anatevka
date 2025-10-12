@@ -56,6 +56,7 @@
                             `(CHECK-PONG ,pong)
                             `(AUGMENT ,edge)
                             `(AUGMENT ,(reverse-blossom-edge edge))
+                            `(CLEAR-HELD-BY-ROOTS ,targets)
                             `(BROADCAST-UNLOCK :destroy? ,T)
                             `(HALT)))))
 

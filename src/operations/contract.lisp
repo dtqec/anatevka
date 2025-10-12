@@ -90,6 +90,7 @@ PETAL-CHILD-EDGES: The list of child edges attached to the blossoms in the subtr
                             `(CHECK-PONG ,pong)
                             `(BROADCAST-PINGABILITY ,targets :NONE)
                             `(START-INNER-CONTRACT)
+                            `(CLEAR-HELD-BY-ROOTS ,targets)
                             `(BROADCAST-UNLOCK)
                             `(HALT)))))
 

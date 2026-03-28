@@ -297,8 +297,7 @@ evalutes to
   (:method ((x string) (y string))
     (if (string< x y) x y)))
 
-(define-message-subordinate handle-message-id-query
-    ((node blossom-node) (message message-id-query))
+(define-message-subordinate ((node blossom-node) (message message-id-query))
   "Replies with the minimum ID at this macrovertex."
   (cond
     ((null (blossom-node-petals node))
@@ -329,8 +328,7 @@ evalutes to
 ;; We enable this by changing the tree's pingability, and thus permitting the
 ;; tree to respond to a safe subset (or to all) of PING requests.
 
-(define-broadcast-handler handle-message-broadcast-pingability
-    ((node blossom-node) (message message-broadcast-pingability))
+(define-broadcast-handler ((node blossom-node) (message message-broadcast-pingability))
   "Changes the pingability of `NODE' (and children / petals) to `PING-TYPE'."
   (with-slots (ping-type) message
     (log-entry :entry-type ':changing-pingability
@@ -348,8 +346,7 @@ evalutes to
 ;; NOTE GH-140: these are probably pretty easy to abuse. perhaps it would be
 ;;     better to implement the micromessages after all.
 
-(define-rpc-handler handle-message-set
-    ((node blossom-node) (message message-set))
+(define-rpc-handler ((node blossom-node) (message message-set))
   "Handles a remote SETF request."
   (with-slots (slots values) message
     (loop :for slot :in slots
@@ -357,15 +354,13 @@ evalutes to
           :do (setf (slot-value node slot) value))
     (values)))
 
-(define-rpc-handler handle-message-push
-    ((node blossom-node) (message message-push))
+(define-rpc-handler ((node blossom-node) (message message-push))
   "Handles a remote PUSH request."
   (with-slots (slot value) message
     (push value (slot-value node slot))
     (values)))
 
-(define-rpc-handler handle-message-values
-    ((node blossom-node) (message message-values))
+(define-rpc-handler ((node blossom-node) (message message-values))
   "Handles a remote request for data."
   (with-slots (values) message
     (loop :for value :in values
@@ -378,8 +373,7 @@ evalutes to
 ;; in the ability to inform a blossom that it's been removed from participating
 ;; and should halt its process.
 
-(define-message-handler handle-message-sprout-on-blossom
-    ((node blossom-node) (message message-sprout))
+(define-message-handler ((node blossom-node) (message message-sprout))
   "Handles a request that a root node (perhaps not a vertex) alert the DRYAD that it has sprouted."
   (cond
     ((blossom-node-petals node)
@@ -390,8 +384,7 @@ evalutes to
      (send-message (blossom-node-dryad node)
                    (make-message-sprout :address (process-public-address node))))))
 
-(define-message-handler handle-message-wilt
-    ((node blossom-node) (message message-wilt))
+(define-message-handler ((node blossom-node) (message message-wilt))
   ;; sanity check: are we actually allowed to wilt?
   (when (or (blossom-node-parent node)
             (blossom-node-pistil node)
@@ -404,8 +397,7 @@ evalutes to
                                       :address (process-public-address node)))
   (setf (blossom-node-wilting node) t))
 
-(define-rpc-handler handle-message-claim-root
-    ((node blossom-node) (message message-claim-root))
+(define-rpc-handler ((node blossom-node) (message message-claim-root))
   "If node is already claimed, return NIL. Otherwise, set claimed? to T and return our public address."
   (with-slots (claimed?) node
     (cond
@@ -415,76 +407,12 @@ evalutes to
        (setf claimed? t)
        (process-public-address node)))))
 
-(define-rpc-handler handle-message-release-root
-    ((node blossom-node) (message message-release-root))
+(define-rpc-handler ((node blossom-node) (message message-release-root))
   "Set claimed? to NIL."
   (with-slots (claimed?) node
     (assert claimed? () "Trying to release an unclaimed root!")
     (setf claimed? nil)
     t))
-
-;;;
-;;; blossom message dispatch table
-;;;
-
-;; NOTE: the ordering of this table _mostly_ doesn't matter.  its only really
-;;       important feature is that LOCK-REQUEST gets handled with high priority.
-(define-message-dispatch blossom-node
-  (message-soft-adjoin-root           'handle-message-adjoin-root
-                                      (typep (blossom-node-pistil blossom-node)
-                                             '(or null address)))
-  (message-adjoin-root                'handle-message-adjoin-root
-                                      (and (eql ':ALL (blossom-node-pingable blossom-node))
-                                           (typep (blossom-node-pistil blossom-node)
-                                                  '(or null address))))
-  
-  (message-lock                       'handle-message-lock)
-  
-  (message-broadcast-reweight         'handle-message-broadcast-reweight
-                                      (process-lockable-locked? blossom-node))
-  
-  (message-percolate                  'handle-message-percolate)
-  
-  (message-soft-scan                  'handle-message-scan
-                                      (not (eql ':NONE (blossom-node-pingable blossom-node))))
-  (message-scan                       'handle-message-scan
-                                      (eql ':ALL (blossom-node-pingable blossom-node)))
-
-  (message-broadcast-pingability      'handle-message-broadcast-pingability)
-
-  (message-convergecast-collect-roots 'handle-message-convergecast-collect-roots)
-  
-  (message-set                        'handle-message-set)
-  (message-push                       'handle-message-push)
-  (message-values                     'handle-message-values)
-  
-  (message-root-path                  'handle-message-root-path)
-  (message-attach-parent              'handle-message-attach-parent)
-  (message-convert-child-to-petal     'handle-message-convert-child-to-petal)
-  (message-reattach-cycle-child       'handle-message-reattach-cycle-child)
-  (message-set-up-blossom             'handle-message-set-up-blossom)
-  
-  (message-expand                     'handle-message-expand)
-  (message-blossom-parent             'handle-message-blossom-parent
-                                          (typep (blossom-node-pistil blossom-node)
-                                                 '(or null address)))
-  (message-replace-child              'handle-message-replace-child)
-  
-  (message-soft-ping                  'handle-message-ping
-                                          (not (eql ':NONE (blossom-node-pingable blossom-node))))
-  
-  (message-ping                       'handle-message-ping
-                                          (eql ':ALL (blossom-node-pingable blossom-node)))
-  
-  (message-wilt                       'handle-message-wilt)
-  
-  (message-sprout                     'handle-message-sprout-on-blossom)
-  
-  (message-id-query                   'handle-message-id-query)
-  (message-claim-root                 'handle-message-claim-root)
-  (message-release-root               'handle-message-release-root)
-  (message-broadcast-stash-weight     'handle-message-broadcast-stash-weight)
-  (message-broadcast-unstash-weight   'handle-message-broadcast-unstash-weight))
 
 ;;;
 ;;; basic command definitions for BLOSSOM-NODE

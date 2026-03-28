@@ -82,8 +82,7 @@
 ;;; message handlers
 ;;;
 
-(define-message-handler handle-message-percolate
-    ((node blossom-node) (message message-percolate))
+(define-message-handler ((node blossom-node) (message message-percolate))
   "Performs a step in the path augmentation process."
   (with-slots (traversal-edge reply-channel) message
     ;; does the previous node expect me to link to it?

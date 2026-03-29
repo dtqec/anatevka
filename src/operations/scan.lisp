@@ -486,7 +486,12 @@ NOTE: this command is only installed when NODE is a vertex."
                  :pingability (blossom-node-pingable node)
                  :vv-distance (vertex-vertex-distance (blossom-node-id node) id)
                  :old-weight weight
-                 :new-weight total-weight)
+                 :new-weight total-weight
+                 ;; these normally get automatically appended, but we're outside
+                 ;; the lexical context of a handler
+                 :log-level 0
+                 :time (now)
+                 :source node)
       (send-message (process-public-address node)
                     (funcall (if (typep message 'message-soft-ping)
                                  #'make-message-soft-adjoin-root
@@ -523,7 +528,12 @@ This handler is responsible for actually assigning a recommended-next-move for t
                      :old-value (message-pong-weight pong)
                      :delta delta
                      :internal-weight internal-weight
-                     :stashed-weight stashed-weight)
+                     :stashed-weight stashed-weight
+                     ;; these normally get automatically appended, but we're
+                     ;; outside the lexical context of a handler
+                     :log-level 0
+                     :time (now)
+                     :source node)
           (decf (message-pong-weight pong) delta))))
     ;; if we haven't yet made it to toplevel...
     (when (blossom-node-pistil node)

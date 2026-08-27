@@ -468,8 +468,7 @@ NOTE: this command is only installed when NODE is a vertex."
 ;;;       weight adjustments on the recipient side. i think this is the only sane
 ;;;       arrangement for a source that is ignorant of the recipient's ID.
 
-(define-message-handler handle-message-ping
-    ((node blossom-node) (message message-ping))
+(defun handle-message-ping (node message)
   "Begins the process of responding to a PING message: starts an ADJOIN-ROOT sequence."
   (with-slots (weight id recipient-child reply-channel root) message
     (let* ((total-weight (+ weight
@@ -487,7 +486,12 @@ NOTE: this command is only installed when NODE is a vertex."
                  :pingability (blossom-node-pingable node)
                  :vv-distance (vertex-vertex-distance (blossom-node-id node) id)
                  :old-weight weight
-                 :new-weight total-weight)
+                 :new-weight total-weight
+                 ;; these normally get automatically appended, but we're outside
+                 ;; the lexical context of a handler
+                 :log-level 0
+                 :time (now)
+                 :source node)
       (send-message (process-public-address node)
                     (funcall (if (typep message 'message-soft-ping)
                                  #'make-message-soft-adjoin-root
@@ -496,8 +500,15 @@ NOTE: this command is only installed when NODE is a vertex."
                              :ping message
                              :pong pong)))))
 
-(define-message-handler handle-message-adjoin-root
-    ((node blossom-node) (message message-adjoin-root))
+(define-message-handler ((node blossom-node) (message message-ping)
+                         :guard (eql ':ALL (blossom-node-pingable node)))
+  (handle-message-ping node message))
+
+(define-message-handler ((node blossom-node) (message message-soft-ping)
+                         :guard (not (eql ':NONE (blossom-node-pingable node))))
+  (handle-message-ping node message))
+
+(defun handle-message-adjoin-root (node message)
   "The workhorse of responding to a PING message: walks up the blossom contractions, then up the maximally-contracted tree, ultimately resulting in a PONG.
 
 This handler is responsible for actually assigning a recommended-next-move for the blossom algorithm, which makes up the bulk of the function body."
@@ -517,13 +528,18 @@ This handler is responsible for actually assigning a recommended-next-move for t
                      :old-value (message-pong-weight pong)
                      :delta delta
                      :internal-weight internal-weight
-                     :stashed-weight stashed-weight)
+                     :stashed-weight stashed-weight
+                     ;; these normally get automatically appended, but we're
+                     ;; outside the lexical context of a handler
+                     :log-level 0
+                     :time (now)
+                     :source node)
           (decf (message-pong-weight pong) delta))))
     ;; if we haven't yet made it to toplevel...
     (when (blossom-node-pistil node)
       ;; ... keep throwing up pistil.
       (send-message (blossom-node-pistil node) message)
-      (finish-handler))
+      (return-from handle-message-adjoin-root))
     ;; otherwise, record the first toplevel node we see as our parent blossom.
     ;; CRITICALLY, this does NOT prematurely return.
     (unless (blossom-edge-target-node last-edge)
@@ -534,13 +550,24 @@ This handler is responsible for actually assigning a recommended-next-move for t
     (when (blossom-node-parent node)
       (send-message (blossom-edge-target-node (blossom-node-parent node))
                     message)
-      (finish-handler))
+      (return-from handle-message-adjoin-root))
     ;; otherwise, we're at the root.
     (let ((target-root (process-public-address node))
           (recommendation (recommend node ping pong message)))
       (setf (message-pong-target-root pong) target-root
             (message-pong-recommendation pong) recommendation)
       (send-message (message-reply-channel message) pong))))
+
+(define-message-handler ((node blossom-node) (message message-soft-adjoin-root)
+                         :guard (typep (blossom-node-pistil node)
+                                       '(or null address)))
+  (handle-message-adjoin-root node message))
+
+(define-message-handler ((node blossom-node) (message message-adjoin-root)
+                         :guard (and (eql ':ALL (blossom-node-pingable node))
+                                     (typep (blossom-node-pistil node)
+                                            '(or null address))))
+  (handle-message-adjoin-root node message))
 
 (defgeneric recommend (node ping pong adjoin-root)
   (:documentation "Computes an action to propose as part of a PONG.")
@@ -586,12 +613,20 @@ This handler is responsible for actually assigning a recommended-next-move for t
         (t
          (error "Unknown blossom case."))))))
 
-(define-message-handler handle-message-scan
-    ((node blossom-node) (message message-scan))
+(defun handle-message-scan
+    (node message)
   "Begins a scanning process."
   (when (blossom-node-wilting node)
     (when (message-reply-channel message)
       (send-message (message-reply-channel message)
                     (make-pong node)))
-    (finish-handler))
+    (return-from handle-message-scan))
   (process-continuation node `(START-SCAN ,message)))
+
+(define-message-handler ((node blossom-node) (message message-soft-scan)
+                         :guard (not (eql ':NONE (blossom-node-pingable node))))
+  (handle-message-scan node message))
+
+(define-message-handler ((node blossom-node) (message message-scan)
+                         :guard (eql ':ALL (blossom-node-pingable node)))
+  (handle-message-scan node message))

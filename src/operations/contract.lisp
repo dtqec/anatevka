@@ -312,8 +312,7 @@ If we have a non-null peduncle edge (F -> C above), then we need to tell its sou
 ;;; message handlers
 ;;;
 
-(define-message-handler handle-message-root-path
-    ((node blossom-node) (message message-root-path))
+(define-message-handler ((node blossom-node) (message message-root-path))
   "Calculates the path from a blossom through to the tree root (consisting only of toplevel blossoms)."
   (with-slots (path reply-channel) message
     (cond
@@ -329,8 +328,7 @@ If we have a non-null peduncle edge (F -> C above), then we need to tell its sou
        (send-message reply-channel
                      (make-message-rpc-done :result path))))))
 
-(define-rpc-handler handle-message-attach-parent
-    ((node blossom-node) (message message-attach-parent))
+(define-rpc-handler ((node blossom-node) (message message-attach-parent))
   "Attaches a fresh blossom to an existing parent."
   (with-slots (peduncle-edge reply-channel fresh-blossom) message
     (assert (not (null peduncle-edge)))
@@ -348,8 +346,7 @@ If we have a non-null peduncle edge (F -> C above), then we need to tell its sou
           fresh-blossom)
     nil))
 
-(define-rpc-handler handle-message-convert-child-to-petal
-    ((node blossom-node) (message message-convert-child-to-petal))
+(define-rpc-handler ((node blossom-node) (message message-convert-child-to-petal))
   "Attaches an old child to a new blossom as a petal."
   (with-slots (reply-channel fresh-blossom) message
     (prog1 (blossom-node-children node)
@@ -359,8 +356,7 @@ If we have a non-null peduncle edge (F -> C above), then we need to tell its sou
             (blossom-node-match-edge node) nil
             (blossom-node-children node)   nil))))
 
-(define-rpc-handler handle-message-reattach-cycle-child
-    ((node blossom-node) (message message-reattach-cycle-child))
+(define-rpc-handler ((node blossom-node) (message message-reattach-cycle-child))
   "Attaches an old child to a new blossom as a (non-blossom-)child."
   (with-slots (reply-channel fresh-blossom) message
     (setf (blossom-edge-target-node (blossom-node-parent node))
@@ -370,8 +366,7 @@ If we have a non-null peduncle edge (F -> C above), then we need to tell its sou
 ;; NOTE: this message is really hefty. you could cut it down somewhat by making
 ;;       the fresh blossom responsible for setting _itself_ up. this would also
 ;;       alleviate the obnoxious problem with locking/spawning timing.
-(define-rpc-handler handle-message-set-up-blossom
-    ((node blossom-node) (message message-set-up-blossom))
+(define-rpc-handler ((node blossom-node) (message message-set-up-blossom))
   "Sets up a new contracting blossom's slots."
   (with-slots (peduncle-edge petals petal-children dryad reply-channel) message
     (loop :for petal-child :in petal-children

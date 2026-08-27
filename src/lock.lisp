@@ -25,8 +25,7 @@
 ;;; blossom-node handlers
 ;;;
 
-(define-message-handler handle-message-lock
-    ((node blossom-node) (message message-lock))
+(define-message-handler ((node blossom-node) (message message-lock))
   "Prepares a BLOSSOM-NODE to be locked."
   (when (blossom-node-wilting node)
     (send-message (message-reply-channel message)

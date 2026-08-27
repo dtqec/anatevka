@@ -105,8 +105,7 @@
 ;;; message handlers
 ;;;
 
-(define-message-handler handle-message-expand
-    ((node blossom-node) (message message-expand))
+(define-message-handler ((node blossom-node) (message message-expand))
   "Starts the procedure for popping a contracting blossom."
   (cond
     ((blossom-node-pistil node)
@@ -121,8 +120,9 @@
                 :match-edge (blossom-node-match-edge node))
      (process-continuation node `(EXPAND-BLOSSOM ,(message-reply-channel message))))))
 
-(define-message-handler handle-message-blossom-parent
-    ((node blossom-node) (message message-blossom-parent))
+(define-message-handler ((node blossom-node) (message message-blossom-parent)
+                         :guard (typep (blossom-node-pistil node)
+                                       '(or null address)))
   "Calculates the topmost blossom which contains NODE, subject to the possible limitation that we not exceed STOP-BEFORE."
   (with-slots (reply-channel stop-before) message
     (cond
@@ -141,8 +141,7 @@
       (t
        (send-message (blossom-node-pistil node) message)))))
 
-(define-rpc-handler handle-message-replace-child
-    ((node blossom-node) (message message-replace-child))
+(define-rpc-handler ((node blossom-node) (message message-replace-child))
   "Replaces a child edge targeting a given node by an edge targeting another node."
   (with-slots (reply-channel old-child new-child) message
     (dolist (child-edge (blossom-node-children node))

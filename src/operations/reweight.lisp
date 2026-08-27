@@ -321,8 +321,7 @@
 ;;; message handlers
 ;;;
 
-(define-broadcast-handler handle-message-broadcast-stash-weight
-    ((node blossom-node) (message message-broadcast-stash-weight))
+(define-broadcast-handler ((node blossom-node) (message message-broadcast-stash-weight))
   "If the node is negative, sets the `STASHED-WEIGHT' of `NODE' to equal its `INTERNAL-WEIGHT', and regardless instructs `NODE's children to do the same."
   (with-slots (internal-weight positive? stashed-weight) node
     (unless positive?
@@ -332,8 +331,8 @@
     (push-broadcast-frame :targets (mapcar #'blossom-edge-target-node
                                            (blossom-node-children node)))))
 
-(define-broadcast-handler handle-message-broadcast-reweight
-    ((node blossom-node) (message message-broadcast-reweight))
+(define-broadcast-handler ((node blossom-node) (message message-broadcast-reweight)
+                           :guard (process-lockable-locked? node))
   "Increments the `INTERNAL-WEIGHT' of `NODE' by the `WEIGHT' of the `MESSAGE', and then instructs `NODE's children to reweight themselves by the additive inverse of `WEIGHT'."
   (with-slots (weight) message
     (with-slots (internal-weight) node
@@ -348,8 +347,7 @@
       (push-broadcast-frame :targets (mapcar #'blossom-edge-target-node
                                              (blossom-node-children node))))))
 
-(define-broadcast-handler handle-message-broadcast-unstash-weight
-    ((node blossom-node) (message message-broadcast-unstash-weight))
+(define-broadcast-handler ((node blossom-node) (message message-broadcast-unstash-weight))
   "If the node is negative, sets the `STASHED-WEIGHT' of `NODE' to NIL, and regardless instructs `NODE's children to do the same."
   (with-slots (internal-weight positive? stashed-weight) node
     (unless positive?

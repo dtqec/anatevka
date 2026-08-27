@@ -38,10 +38,6 @@
     :documentation "The address of the host `DRYAD' for the node that spawned us."))
   (:documentation "A companion process responsible for coordinating a tree operation."))
 
-(define-message-dispatch supervisor
-  ;; nothing. supervisors are bull-headed.
-  )
-
 ;;;
 ;;; supervisor data frame
 ;;;

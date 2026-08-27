@@ -63,8 +63,7 @@
 ;;; passive DRYAD message handlers
 ;;;
 
-(define-message-handler handler-message-sow
-    ((dryad dryad) (message message-sow))
+(define-message-handler ((dryad dryad) (message message-sow))
   "Adjoin a new node to the problem graph.
 
 NOTE: In the basic implementation, these messages must be waiting for the DRYAD on launch."
@@ -84,8 +83,7 @@ NOTE: In the basic implementation, these messages must be waiting for the DRYAD 
           (gethash node-address (dryad-sprouted? dryad)) nil)
     node-address))
 
-(define-message-handler handler-message-discover
-    ((dryad dryad) (message message-discover))
+(define-message-handler ((dryad dryad) (message message-discover))
   "Handles a DISCOVER message, sent by a BLOSSOM-NODE which expects a list of other BLOSSOM-NODE addresses to which it should send PINGs."
   (let ((channels
           (loop :for address :being :the :hash-keys :of (dryad-ids dryad)
@@ -98,8 +96,7 @@ NOTE: In the basic implementation, these messages must be waiting for the DRYAD 
                                           :channels-to-try channels
                                           :id (message-discover-id message)))))
 
-(define-message-handler handler-message-sprout
-    ((dryad dryad) (message message-sprout))
+(define-message-handler ((dryad dryad) (message message-sprout))
   "Handles a SPROUT message, indicating that a BLOSSOM-NODE has been matched (for the first time)."
   (with-slots (address) message
     (a:when-let ((id (gethash address (dryad-ids dryad))))
@@ -108,8 +105,7 @@ NOTE: In the basic implementation, these messages must be waiting for the DRYAD 
                  :id id)
       (setf (gethash address (dryad-sprouted? dryad)) t))))
 
-(define-rpc-handler handler-message-wilting
-    ((dryad dryad) (message message-wilting))
+(define-rpc-handler ((dryad dryad) (message message-wilting))
   "Handles a wilting message, indicating that a BLOSSOM-NODE is dying."
   (with-slots (address) message
     (let ((id (gethash address (dryad-ids dryad))))
@@ -117,29 +113,15 @@ NOTE: In the basic implementation, these messages must be waiting for the DRYAD 
       (remhash address (dryad-sprouted? dryad))
       id)))
 
-(define-rpc-handler handler-message-add-macrovertex
-    ((dryad dryad) (message message-add-macrovertex))
+(define-rpc-handler ((dryad dryad) (message message-add-macrovertex))
   "Handles an add-macrovertex message by keeping track of the provided address."
   (with-slots (address) message
     (setf (gethash address (dryad-macrovertices dryad)) t)))
 
-(define-rpc-handler handler-message-remove-macrovertex
-    ((dryad dryad) (message message-remove-macrovertex))
+(define-rpc-handler ((dryad dryad) (message message-remove-macrovertex))
   "Handles a remove-macrovertex message by forgetting about the provided address."
   (with-slots (address) message
     (remhash address (dryad-macrovertices dryad))))
-
-;;;
-;;; install the handlers into the dispatch table
-;;;
-
-(define-message-dispatch dryad
-  (message-sow                'handler-message-sow)
-  (message-sprout             'handler-message-sprout)
-  (message-discover           'handler-message-discover)
-  (message-wilting            'handler-message-wilting)
-  (message-add-macrovertex    'handler-message-add-macrovertex)
-  (message-remove-macrovertex 'handler-message-remove-macrovertex))
 
 ;;;
 ;;; DRYAD command definitions
